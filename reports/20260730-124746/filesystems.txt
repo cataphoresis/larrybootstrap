@@ -1,0 +1,11 @@
+Filesystem     Type      Size  Used Avail Use% Mounted on
+udev           devtmpfs  3.7G     0  3.7G   0% /dev
+tmpfs          tmpfs     785M  1.3M  784M   1% /run
+/dev/nvme0n1p3 ext4       99G   22G   73G  23% /
+tmpfs          tmpfs     3.9G   26M  3.9G   1% /dev/shm
+tmpfs          tmpfs     5.0M  8.0K  5.0M   1% /run/lock
+tmpfs          tmpfs     1.0M     0  1.0M   0% /run/credentials/systemd-journald.service
+tmpfs          tmpfs     3.9G   84K  3.9G   1% /tmp
+/dev/nvme0n1p1 vfat      299M   51M  248M  17% /boot/efi
+tmpfs          tmpfs     1.0M     0  1.0M   0% /run/credentials/getty@tty1.service
+tmpfs          tmpfs     785M  112K  785M   1% /run/user/1000
