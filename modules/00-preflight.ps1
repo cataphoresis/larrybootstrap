@@ -14,6 +14,7 @@ $Warnings = 0
 function Add-ReportLine {
     param(
         [Parameter(Mandatory)]
+        [AllowEmptyString()]
         [string]$Text
     )
 
@@ -176,11 +177,12 @@ Record-OK "Free space" "$FreeGB GB"
 if ($FreeGB -ge 20) {
     Record-OK "Disk-space check" "PASS"
 }
-elseif ($FreeGB -ge 10) {
-    Record-Warn "Disk-space check" "Only $FreeGB GB free"
+elseif ($FreeGB -ge 5) {
+    Record-Warn "Disk-space check" `
+        "Only $FreeGB GB free on the intentionally small Windows partition"
 }
 else {
-    Record-Fail "Disk-space check" "Less than 10 GB free"
+    Record-Fail "Disk-space check" "Less than 5 GB free"
 }
 
 Write-Section "Connectivity"
@@ -196,10 +198,26 @@ try {
     $DnsResult = Resolve-DnsName `
         -Name "www.microsoft.com" `
         -Type A `
-        -ErrorAction Stop |
+        -ErrorAction Stop
+
+    $DnsAddress = $DnsResult |
+        ForEach-Object {
+            if ($_.PSObject.Properties.Name -contains "IPAddress") {
+                $_.IPAddress
+            }
+            elseif ($_.PSObject.Properties.Name -contains "IP4Address") {
+                $_.IP4Address
+            }
+        } |
+        Where-Object { $_ } |
         Select-Object -First 1
 
-    Record-OK "DNS" $DnsResult.IPAddress
+    if ($DnsAddress) {
+        Record-OK "DNS" $DnsAddress.ToString()
+    }
+    else {
+        Record-OK "DNS" "resolution succeeded"
+    }
 }
 catch {
     Record-Fail "DNS" $_.Exception.Message
@@ -272,3 +290,4 @@ if ($Failures -gt 0) {
 }
 
 exit 0
+
