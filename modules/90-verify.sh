@@ -114,8 +114,8 @@ section "Essential Applications"
 check_app "Firefox" \
     "/Applications/Firefox.app"
 
-check_app "Google Chrome" \
-    "/Applications/Google Chrome.app"
+check_app "Chromium" \
+    "/Applications/Chromium.app"
 
 check_app "Visual Studio Code" \
     "/Applications/Visual Studio Code.app"
