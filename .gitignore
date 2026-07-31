@@ -1,0 +1,5 @@
+.DS_Store
+backups/*
+reports/*
+!backups/.gitkeep
+!reports/.gitkeep
