@@ -217,7 +217,13 @@ fi
 
 section "Installed Application Snapshot"
 
-find /Applications "$HOME/Applications" \
+APP_DIRECTORIES=("/Applications")
+
+if [[ -d "$HOME/Applications" ]]; then
+    APP_DIRECTORIES+=("$HOME/Applications")
+fi
+
+find "${APP_DIRECTORIES[@]}" \
     -maxdepth 1 \
     -type d \
     -name '*.app' \
