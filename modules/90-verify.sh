@@ -144,39 +144,34 @@ check_optional_app "Rectangle" \
 check_optional_app "Keka" \
     "/Applications/Keka.app"
 
-check_optional_app "Stats" \
-    "/Applications/Stats.app"
-
-check_optional_app "Amphetamine" \
-    "/Applications/Amphetamine.app"
-
 check_optional_app "Moonlight" \
     "/Applications/Moonlight.app"
-
-section "Homelab and Media Applications"
-
-check_optional_app "Wireshark" \
-    "/Applications/Wireshark.app"
-
-check_optional_app "Raspberry Pi Imager" \
-    "/Applications/Raspberry Pi Imager.app"
-
-check_optional_app "Balena Etcher" \
-    "/Applications/balenaEtcher.app" \
-    "/Applications/BalenaEtcher.app"
 
 check_optional_app "Private Internet Access" \
     "/Applications/Private Internet Access.app"
 
-check_optional_app "HandBrake" \
-    "/Applications/HandBrake.app"
+if [[ "${MACBOOK_PROFILE:-standard}" == "homelab" || "${MACBOOK_PROFILE:-standard}" == "developer" ]]; then
+    section "Homelab and Media Applications"
 
-check_optional_app "MKVToolNix" \
-    "/Applications/MKVToolNix-*.app" \
-    "/Applications/MKVToolNix.app"
+    check_optional_app "Wireshark" \
+        "/Applications/Wireshark.app"
 
-check_optional_app "MakeMKV" \
-    "/Applications/MakeMKV.app"
+    check_optional_app "Raspberry Pi Imager" \
+        "/Applications/Raspberry Pi Imager.app"
+
+    check_optional_app "Balena Etcher" \
+        "/Applications/balenaEtcher.app" \
+        "/Applications/BalenaEtcher.app"
+
+    check_optional_app "HandBrake" \
+        "/Applications/HandBrake.app"
+
+    check_optional_app "MKVToolNix" \
+        "/Applications/MKVToolNix.app"
+
+    check_optional_app "MakeMKV" \
+        "/Applications/MakeMKV.app"
+fi
 
 section "Developer Environment"
 
@@ -200,10 +195,12 @@ else
     warn "Tauri CLI" "not installed"
 fi
 
-if command -v node >/dev/null 2>&1; then
-    pass "Node.js" "$(node --version)"
-else
-    warn "Node.js" "not installed"
+if [[ "${MACBOOK_PROFILE:-standard}" == "developer" ]]; then
+    if command -v node >/dev/null 2>&1; then
+        pass "Node.js" "$(node --version)"
+    else
+        warn "Node.js" "not installed"
+    fi
 fi
 
 section "macOS Preferences"
