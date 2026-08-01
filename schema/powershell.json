@@ -1,0 +1,12 @@
+{
+  "name": "Larry PowerShell",
+  "workingDirectory": "~/Projects",
+  "historySize": 10000,
+  "historySaveStyle": "SaveIncrementally",
+  "editMode": "Windows",
+  "predictionSource": "History",
+  "editor": "code",
+  "visualEditor": "code",
+  "fallbackEditor": "notepad++",
+  "showBanner": true
+}
