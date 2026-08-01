@@ -1,0 +1,11 @@
+{
+  "profileName": "Larry PowerShell",
+  "profileGuid": "{a8c0f1c3-2f8b-4a7c-9d11-6f4b8c5e7a21}",
+  "commandline": "C:\\Program Files\\PowerShell\\7\\pwsh.exe -NoLogo",
+  "startingDirectory": "%USERPROFILE%",
+  "fontFace": "Cascadia Mono",
+  "fontSize": 12,
+  "colorScheme": "Larry Dark",
+  "padding": "8",
+  "historySize": 9001
+}
