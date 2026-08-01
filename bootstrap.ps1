@@ -9,6 +9,9 @@ $ErrorActionPreference = "Stop"
 
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $PwshPath = (Get-Command pwsh.exe -ErrorAction Stop).Source
+. "$Root\modules\lib\Common.ps1"
+
+$ArtifactRetentionCount = 3
 
 Write-Host ""
 Write-Host "============================================================"
@@ -32,8 +35,17 @@ if ($VerifyOnly) {
         throw "Verification module does not exist yet."
     }
 
-    & $PwshPath -NoLogo -NoProfile -File $VerifyModule -Profile $Profile
-    exit $LASTEXITCODE
+    try {
+        & $PwshPath -NoLogo -NoProfile -File $VerifyModule -Profile $Profile
+        $VerifyExitCode = $LASTEXITCODE
+    }
+    finally {
+        Invoke-BootstrapArtifactRetention `
+            -RootDirectory $Root `
+            -KeepPerModule $ArtifactRetentionCount
+    }
+
+    exit $VerifyExitCode
 }
 
 $Pipeline = @(
@@ -46,25 +58,32 @@ $Pipeline = @(
     [pscustomobject]@{ Name = "Verification";     File = "90-verify.ps1";          Arguments = @("-Profile", $Profile) }
 )
 
-foreach ($Stage in $Pipeline) {
-    $ModulePath = Join-Path $Root "modules\$($Stage.File)"
+try {
+    foreach ($Stage in $Pipeline) {
+        $ModulePath = Join-Path $Root "modules\$($Stage.File)"
 
-    if (-not (Test-Path -LiteralPath $ModulePath -PathType Leaf)) {
-        throw "Bootstrap module not found: $ModulePath"
+        if (-not (Test-Path -LiteralPath $ModulePath -PathType Leaf)) {
+            throw "Bootstrap module not found: $ModulePath"
+        }
+
+        Write-Host ""
+        Write-Host "------------------------------------------------------------" -ForegroundColor DarkCyan
+        Write-Host (" {0}" -f $Stage.Name) -ForegroundColor Cyan
+        Write-Host "------------------------------------------------------------" -ForegroundColor DarkCyan
+
+        $StageArguments = @($Stage.Arguments)
+        & $PwshPath -NoLogo -NoProfile -File $ModulePath @StageArguments
+        $ModuleExitCode = $LASTEXITCODE
+
+        if ($ModuleExitCode -ne 0) {
+            throw "$($Stage.Name) failed with exit code $ModuleExitCode."
+        }
     }
-
-    Write-Host ""
-    Write-Host "------------------------------------------------------------" -ForegroundColor DarkCyan
-    Write-Host (" {0}" -f $Stage.Name) -ForegroundColor Cyan
-    Write-Host "------------------------------------------------------------" -ForegroundColor DarkCyan
-
-    $StageArguments = @($Stage.Arguments)
-    & $PwshPath -NoLogo -NoProfile -File $ModulePath @StageArguments
-    $ModuleExitCode = $LASTEXITCODE
-
-    if ($ModuleExitCode -ne 0) {
-        throw "$($Stage.Name) failed with exit code $ModuleExitCode."
-    }
+}
+finally {
+    Invoke-BootstrapArtifactRetention `
+        -RootDirectory $Root `
+        -KeepPerModule $ArtifactRetentionCount
 }
 
 Write-Host ""

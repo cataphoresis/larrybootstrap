@@ -127,6 +127,55 @@ function New-TimestampedReport {
         "$Prefix-$timestamp.txt"
 }
 
+function Invoke-BootstrapArtifactRetention {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$RootDirectory,
+
+        [ValidateRange(1, 100)]
+        [int]$KeepPerModule = 3
+    )
+
+    $TimestampPattern =
+        '^(?<Prefix>.+)-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$'
+
+    foreach ($ArtifactDirectoryName in @("reports", "backups")) {
+        $ArtifactDirectory = Join-Path $RootDirectory $ArtifactDirectoryName
+
+        if (-not (Test-Path -LiteralPath $ArtifactDirectory -PathType Container)) {
+            continue
+        }
+
+        $Artifacts = Get-ChildItem -LiteralPath $ArtifactDirectory -Force |
+            Where-Object { $_.Name -ne ".gitkeep" } |
+            ForEach-Object {
+                $ComparableName = if ($_.PSIsContainer) {
+                    $_.Name
+                }
+                else {
+                    [IO.Path]::GetFileNameWithoutExtension($_.Name)
+                }
+
+                if ($ComparableName -match $TimestampPattern) {
+                    [pscustomobject]@{
+                        Artifact = $_
+                        Prefix   = $Matches.Prefix
+                    }
+                }
+            }
+
+        foreach ($Group in $Artifacts | Group-Object Prefix) {
+            $Group.Group |
+                Sort-Object { $_.Artifact.LastWriteTimeUtc } -Descending |
+                Select-Object -Skip $KeepPerModule |
+                ForEach-Object {
+                    Remove-Item -LiteralPath $_.Artifact.FullName -Recurse -Force
+                }
+        }
+    }
+}
+
 function Test-ApplicationPath {
     param(
         [Parameter(Mandatory)]

@@ -48,6 +48,10 @@ Each module writes a timestamped report under `reports/`. Modules are run in
 separate PowerShell processes so that each module's exit code cleanly stops the
 pipeline on failure.
 
+After every run, the bootstrap retains the newest three reports and backup
+sets for each module and removes older ones. This keeps troubleshooting history
+without allowing repeated runs to consume space indefinitely.
+
 ## Lightweight editors
 
 - Windows: Notepad++
