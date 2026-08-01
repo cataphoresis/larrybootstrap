@@ -8,6 +8,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
+$PwshPath = (Get-Command pwsh.exe -ErrorAction Stop).Source
 
 Write-Host ""
 Write-Host "============================================================"
@@ -31,9 +32,41 @@ if ($VerifyOnly) {
         throw "Verification module does not exist yet."
     }
 
-    & $VerifyModule
+    & $PwshPath -NoLogo -NoProfile -File $VerifyModule -Profile $Profile
     exit $LASTEXITCODE
 }
 
-Write-Host "Bootstrap repository is initialized."
-Write-Host "No system changes have been made yet."
+$Pipeline = @(
+    [pscustomobject]@{ Name = "Preflight";        File = "00-preflight.ps1";        Arguments = @() },
+    [pscustomobject]@{ Name = "Inventory";        File = "01-inventory.ps1";        Arguments = @() },
+    [pscustomobject]@{ Name = "WinGet packages";  File = "10-winget.ps1";          Arguments = @("-Profile", $Profile) },
+    [pscustomobject]@{ Name = "Windows settings"; File = "20-settings.ps1";        Arguments = @() },
+    [pscustomobject]@{ Name = "Direct installs";  File = "30-direct-installs.ps1"; Arguments = @("-Profile", $Profile) },
+    [pscustomobject]@{ Name = "Larry PowerShell"; File = "40-powershell.ps1";      Arguments = @() },
+    [pscustomobject]@{ Name = "Verification";     File = "90-verify.ps1";          Arguments = @("-Profile", $Profile) }
+)
+
+foreach ($Stage in $Pipeline) {
+    $ModulePath = Join-Path $Root "modules\$($Stage.File)"
+
+    if (-not (Test-Path -LiteralPath $ModulePath -PathType Leaf)) {
+        throw "Bootstrap module not found: $ModulePath"
+    }
+
+    Write-Host ""
+    Write-Host "------------------------------------------------------------" -ForegroundColor DarkCyan
+    Write-Host (" {0}" -f $Stage.Name) -ForegroundColor Cyan
+    Write-Host "------------------------------------------------------------" -ForegroundColor DarkCyan
+
+    $StageArguments = @($Stage.Arguments)
+    & $PwshPath -NoLogo -NoProfile -File $ModulePath @StageArguments
+    $ModuleExitCode = $LASTEXITCODE
+
+    if ($ModuleExitCode -ne 0) {
+        throw "$($Stage.Name) failed with exit code $ModuleExitCode."
+    }
+}
+
+Write-Host ""
+Write-Host "Windows bootstrap completed successfully." -ForegroundColor Green
+exit 0
