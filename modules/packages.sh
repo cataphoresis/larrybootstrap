@@ -47,6 +47,19 @@ FULL_PACKAGES=(
     python3-pip
     python3-venv
     pipx
+
+    # Lightweight development and text editing
+    geany
+    geany-plugins
+    gh
+
+    # Android Platform Tools and USB permissions
+    adb
+    fastboot
+    android-sdk-platform-tools-common
+    usbutils
+
+    # Networking and homelab utilities
     nmap
     iperf3
     tcpdump
