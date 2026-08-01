@@ -100,6 +100,7 @@ section "Core Tools"
 
 check_command brew "Homebrew"
 check_command git "Git"
+check_command gh "GitHub CLI"
 check_command curl "curl"
 check_command jq "jq"
 
