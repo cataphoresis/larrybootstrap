@@ -278,9 +278,10 @@ function Install-WinGetPackage {
         "--accept-source-agreements"
     )
 
-    & winget @Arguments
+    & winget @Arguments | Out-Host
+    $ExitCode = $LASTEXITCODE
 
-    if ($LASTEXITCODE -eq 0) {
+    if ($ExitCode -eq 0) {
 
         Write-OK $Package.DisplayName "installed"
 
@@ -300,3 +301,4 @@ function Install-WinGetPackage {
 
     return $false
 }
+
