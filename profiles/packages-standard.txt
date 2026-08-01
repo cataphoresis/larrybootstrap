@@ -1,0 +1,15 @@
+# Windows Bootstrap Package Manifest
+# id|display|required
+
+Mozilla.Firefox|Firefox|true
+eloston.ungoogled-chromium|Chromium|false
+Microsoft.VisualStudioCode|Visual Studio Code|true
+Notepad++.Notepad++|Notepad++|true
+VideoLAN.VLC|VLC|true
+Spotify.Spotify|Spotify|true
+FileZilla.Client|FileZilla|true
+MoonlightGameStreamingProject.Moonlight|Moonlight|true
+AgileBits.1Password|1Password|true
+7zip.7zip|7-Zip|true
+Microsoft.PowerToys|PowerToys|false
+PrivateInternetAccess.PrivateInternetAccess|Private Internet Access|true
