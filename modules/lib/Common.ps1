@@ -232,3 +232,71 @@ function Get-PackageManifest {
         }
     }
 }
+
+function Test-WinGetPackageInstalled {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Id
+    )
+
+    try {
+        $Output = winget list `
+            --id $Id `
+            --exact `
+            --accept-source-agreements 2>$null
+
+        return ($LASTEXITCODE -eq 0 -and $Output -match [regex]::Escape($Id))
+    }
+    catch {
+        return $false
+    }
+}
+
+function Install-WinGetPackage {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [pscustomobject]$Package
+    )
+
+    if (Test-WinGetPackageInstalled $Package.Id) {
+
+        Write-OK $Package.DisplayName "already installed"
+
+        return $true
+    }
+
+    Write-InfoLine $Package.DisplayName "installing..."
+
+    $Arguments = @(
+        "install"
+        "--id"
+        $Package.Id
+        "--exact"
+        "--accept-package-agreements"
+        "--accept-source-agreements"
+    )
+
+    & winget @Arguments
+
+    if ($LASTEXITCODE -eq 0) {
+
+        Write-OK $Package.DisplayName "installed"
+
+        return $true
+    }
+
+    if ($Package.Required) {
+
+        Write-Fail $Package.DisplayName "installation failed"
+
+    }
+    else {
+
+        Write-Warn $Package.DisplayName "optional package failed"
+
+    }
+
+    return $false
+}
