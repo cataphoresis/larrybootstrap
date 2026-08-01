@@ -1,0 +1,19 @@
+{
+  "packages": [
+    {
+      "name": "FileZilla",
+      "required": true,
+      "downloadUri": "https://sourceforge.net/projects/filezilla/files/latest/download",
+      "allowedDownloadHosts": [
+        "sourceforge.net",
+        "*.dl.sourceforge.net"
+      ],
+      "publisherPattern": "FileZilla Project|Tim Kosse",
+      "silentArguments": ["/S"],
+      "detectionPaths": [
+        "%ProgramFiles%\\FileZilla FTP Client\\filezilla.exe",
+        "%ProgramFiles(x86)%\\FileZilla FTP Client\\filezilla.exe"
+      ]
+    }
+  ]
+}
