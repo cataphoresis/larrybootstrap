@@ -2,8 +2,9 @@
   "packages": [
     {
       "name": "FileZilla",
-      "required": true,
+      "required": false,
       "downloadUri": "https://sourceforge.net/projects/filezilla/files/latest/download",
+      "manualDownloadUri": "https://filezilla-project.org/download.php?show_all=1",
       "allowedDownloadHosts": [
         "sourceforge.net",
         "*.dl.sourceforge.net"

@@ -139,7 +139,10 @@ Save-Inventory "Uninstall registry" {
     )
 
     Get-ItemProperty $RegistryPaths -ErrorAction SilentlyContinue |
-        Where-Object DisplayName |
+        Where-Object {
+            $_.PSObject.Properties.Name -contains "DisplayName" -and
+            -not [string]::IsNullOrWhiteSpace([string]$_.DisplayName)
+        } |
         Select-Object DisplayName, DisplayVersion, Publisher, InstallLocation,
             UninstallString |
         Sort-Object DisplayName |

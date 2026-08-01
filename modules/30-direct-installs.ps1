@@ -94,6 +94,20 @@ function Install-DirectPackage {
         Write-InfoLine $Package.name "downloading from $($DownloadUri.DnsSafeHost)"
         Invoke-WebRequest -Uri $DownloadUri -OutFile $TemporaryPath -UseBasicParsing
 
+        $Header = [byte[]]::new(2)
+        $Stream = [IO.File]::OpenRead($TemporaryPath)
+
+        try {
+            [void]$Stream.Read($Header, 0, $Header.Length)
+        }
+        finally {
+            $Stream.Dispose()
+        }
+
+        if ($Header[0] -ne 0x4D -or $Header[1] -ne 0x5A) {
+            throw "Download source returned a web page instead of a Windows installer"
+        }
+
         $Signature = Get-AuthenticodeSignature -FilePath $TemporaryPath
 
         if ($Signature.Status -ne "Valid") {
@@ -175,8 +189,14 @@ foreach ($Package in $Packages) {
         }
         else {
             $OptionalFailures++
-            Write-Warn $Package.name $_.Exception.Message
-            Add-ReportLine ("[WARN] {0,-28} {1}" -f $Package.name, $_.Exception.Message)
+            $Message = $_.Exception.Message
+
+            if ($Package.PSObject.Properties.Name -contains "manualDownloadUri") {
+                $Message += "; install manually from $($Package.manualDownloadUri)"
+            }
+
+            Write-Warn $Package.name $Message
+            Add-ReportLine ("[WARN] {0,-28} {1}" -f $Package.name, $Message)
         }
     }
 }

@@ -295,19 +295,39 @@ else {
 
 Write-Section "Applying Settings"
 
-try {
-    Stop-Process `
-        -Name explorer `
-        -Force `
-        -ErrorAction SilentlyContinue
-
-    Start-Process explorer.exe
-
-    Record-OK "Explorer restart" "complete"
+if ($Changes -eq 0) {
+    Record-OK "Explorer restart" "not needed; no settings changed"
 }
-catch {
-    Record-Warn "Explorer restart" `
-        "log off or restart to apply every setting"
+else {
+    try {
+        Stop-Process `
+            -Name explorer `
+            -Force `
+            -ErrorAction SilentlyContinue
+
+        $ExplorerRestarted = $false
+
+        for ($Attempt = 0; $Attempt -lt 10; $Attempt++) {
+            Start-Sleep -Milliseconds 500
+
+            if (Get-Process explorer -ErrorAction SilentlyContinue) {
+                $ExplorerRestarted = $true
+                break
+            }
+        }
+
+        if ($ExplorerRestarted) {
+            Record-OK "Explorer restart" "complete"
+        }
+        else {
+            Record-Warn "Explorer restart" `
+                "Windows did not restart the shell; sign out to apply every setting"
+        }
+    }
+    catch {
+        Record-Warn "Explorer restart" `
+            "sign out or restart to apply every setting"
+    }
 }
 
 Write-Section "Settings Result"
