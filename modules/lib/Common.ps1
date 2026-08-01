@@ -168,3 +168,67 @@ function Get-WingetPackage {
 
     return $null
 }
+
+function Get-PackageManifest {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Path
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "Package manifest not found: $Path"
+    }
+
+    $LineNumber = 0
+
+    foreach ($Line in Get-Content -LiteralPath $Path) {
+        $LineNumber++
+        $TrimmedLine = $Line.Trim()
+
+        # Ignore blank lines and comments.
+        if (
+            [string]::IsNullOrWhiteSpace($TrimmedLine) -or
+            $TrimmedLine.StartsWith("#")
+        ) {
+            continue
+        }
+
+        $Fields = $TrimmedLine.Split("|")
+
+        if ($Fields.Count -ne 3) {
+            throw (
+                "Invalid manifest entry at line ${LineNumber}: " +
+                "expected id|display|required"
+            )
+        }
+
+        $Id = $Fields[0].Trim()
+        $DisplayName = $Fields[1].Trim()
+        $RequiredText = $Fields[2].Trim()
+
+        if ([string]::IsNullOrWhiteSpace($Id)) {
+            throw "Missing package ID at line $LineNumber."
+        }
+
+        if ([string]::IsNullOrWhiteSpace($DisplayName)) {
+            throw "Missing display name at line $LineNumber."
+        }
+
+        $Required = $false
+
+        if (-not [bool]::TryParse($RequiredText, [ref]$Required)) {
+            throw (
+                "Invalid required value at line ${LineNumber}: " +
+                "'$RequiredText' must be true or false."
+            )
+        }
+
+        [pscustomobject]@{
+            Id         = $Id
+            DisplayName = $DisplayName
+            Required   = $Required
+            LineNumber = $LineNumber
+        }
+    }
+}
