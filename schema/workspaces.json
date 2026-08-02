@@ -1,0 +1,17 @@
+{
+  "requiredModules": ["FancyZones", "Workspaces"],
+  "layouts": [
+    {
+      "name": "Command",
+      "purpose": "PowerShell, VS Code, and infrastructure administration"
+    },
+    {
+      "name": "Browse",
+      "purpose": "Firefox-focused research and web tools"
+    },
+    {
+      "name": "Remote",
+      "purpose": "Moonlight and remote workstation sessions"
+    }
+  ]
+}

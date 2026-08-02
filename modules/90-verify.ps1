@@ -218,6 +218,101 @@ else {
     }
 }
 
+Write-Section "Browser Configuration"
+
+$BrowserSchemaPath = Join-Path $Root "schema\browser.json"
+$FirefoxPath = Test-ApplicationPath -Paths @(
+    "$env:ProgramFiles\Mozilla Firefox\firefox.exe",
+    "${env:ProgramFiles(x86)}\Mozilla Firefox\firefox.exe"
+)
+
+if (-not $FirefoxPath) {
+    Record-Fail "Firefox policy" "Firefox executable not found"
+}
+elseif (-not (Test-Path -LiteralPath $BrowserSchemaPath -PathType Leaf)) {
+    Record-Fail "Browser schema" "not found: $BrowserSchemaPath"
+}
+else {
+    $PolicyPath = Join-Path (Split-Path -Parent $FirefoxPath) "distribution\policies.json"
+
+    if (-not (Test-Path -LiteralPath $PolicyPath -PathType Leaf)) {
+        Record-Fail "Firefox policy" "not found: $PolicyPath"
+    }
+    else {
+        try {
+            $BrowserSchema = Get-Content -LiteralPath $BrowserSchemaPath -Raw | ConvertFrom-Json
+            $Policy = Get-Content -LiteralPath $PolicyPath -Raw | ConvertFrom-Json
+            $ConfiguredUrls = @($Policy.policies.Extensions.Install)
+            $MissingExtensions = @(
+                $BrowserSchema.firefoxExtensions |
+                    Where-Object { $_.installUrl -notin $ConfiguredUrls }
+            )
+
+            if ($MissingExtensions.Count -eq 0) {
+                Record-OK "Firefox extensions" "$($ConfiguredUrls.Count) managed installations"
+            }
+            else {
+                Record-Fail "Firefox extensions" "missing policy entries: $($MissingExtensions.name -join ', ')"
+            }
+        }
+        catch {
+            Record-Fail "Firefox policy" $_.Exception.Message
+        }
+    }
+}
+
+$DefaultProgId = Get-ItemPropertyValue `
+    -LiteralPath "HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice" `
+    -Name "ProgId" `
+    -ErrorAction SilentlyContinue
+
+if ($DefaultProgId -match '^FirefoxURL') {
+    Record-OK "Default browser" "Firefox"
+}
+else {
+    Record-Warn "Default browser" "Firefox is not the HTTPS default"
+}
+
+Write-Section "PowerToys Workspaces"
+
+$PowerToysSettingsPath = Join-Path $env:LOCALAPPDATA "Microsoft\PowerToys\settings.json"
+$WorkspaceSchemaPath = Join-Path $Root "schema\workspaces.json"
+$WorkspaceExportPath = Join-Path $Root "profiles\powertoys"
+
+if (-not (Test-Path -LiteralPath $PowerToysSettingsPath -PathType Leaf)) {
+    Record-Fail "PowerToys settings" "not found: $PowerToysSettingsPath"
+}
+elseif (-not (Test-Path -LiteralPath $WorkspaceSchemaPath -PathType Leaf)) {
+    Record-Fail "Workspace schema" "not found: $WorkspaceSchemaPath"
+}
+else {
+    try {
+        $PowerToysSettings = Get-Content -LiteralPath $PowerToysSettingsPath -Raw | ConvertFrom-Json
+        $WorkspaceSchema = Get-Content -LiteralPath $WorkspaceSchemaPath -Raw | ConvertFrom-Json
+
+        foreach ($Module in $WorkspaceSchema.requiredModules) {
+            $Property = $PowerToysSettings.enabled.PSObject.Properties[[string]$Module]
+
+            if ($Property -and $Property.Value -eq $true) {
+                Record-OK "PowerToys $Module" "enabled"
+            }
+            else {
+                Record-Fail "PowerToys $Module" "not enabled"
+            }
+        }
+    }
+    catch {
+        Record-Fail "PowerToys settings" $_.Exception.Message
+    }
+}
+
+if (Test-Path -LiteralPath $WorkspaceExportPath -PathType Container) {
+    Record-OK "Workspace exports" $WorkspaceExportPath
+}
+else {
+    Record-Fail "Workspace exports" "not found: $WorkspaceExportPath"
+}
+
 Write-Section "Verification Result"
 Write-InfoLine "Passed" $Passed.ToString()
 Write-InfoLine "Warnings" $Warnings.ToString()

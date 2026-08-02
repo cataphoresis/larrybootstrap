@@ -1,0 +1,22 @@
+{
+  "primaryBrowser": "Firefox",
+  "secondaryBrowser": "Chromium",
+  "firefoxExtensions": [
+    {
+      "name": "uBlock Origin",
+      "installUrl": "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi"
+    },
+    {
+      "name": "SponsorBlock",
+      "installUrl": "https://addons.mozilla.org/firefox/downloads/latest/sponsorblock/latest.xpi"
+    },
+    {
+      "name": "Privacy Badger",
+      "installUrl": "https://addons.mozilla.org/firefox/downloads/latest/privacy-badger17/latest.xpi"
+    },
+    {
+      "name": "1Password",
+      "installUrl": "https://addons.mozilla.org/firefox/downloads/latest/1password-x-password-manager/latest.xpi"
+    }
+  ]
+}

@@ -30,6 +30,15 @@ Recreates Matthew's lean, remote-first Windows environment.
 - 7-Zip
 - PowerToys
 
+Firefox is managed as the primary browser. The browser module configures
+automatic installation of uBlock Origin, SponsorBlock, EFF Privacy Badger, and
+1Password through Mozilla enterprise policy. Windows may still require one
+manual confirmation in Default apps to make Firefox the system default.
+
+PowerToys FancyZones and Workspaces are enabled automatically. The initial
+`Command`, `Browse`, and `Remote` workspace captures remain manual because they
+depend on the final application positions and monitor arrangement.
+
 ## Usage
 
 Run the complete standard bootstrap from PowerShell 7:
