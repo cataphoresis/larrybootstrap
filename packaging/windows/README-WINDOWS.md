@@ -33,8 +33,8 @@ Available profiles are `standard`, `homelab`, and `developer`.
 From the folder containing the ZIP and `.sha256` file:
 
 ```powershell
-(Get-FileHash .\LarryBootstrap-Windows-v0.1.0.zip -Algorithm SHA256).Hash.ToLower()
-Get-Content .\LarryBootstrap-Windows-v0.1.0.zip.sha256
+(Get-FileHash .\LarryBootstrap-Windows-v0.1.1.zip -Algorithm SHA256).Hash.ToLower()
+Get-Content .\LarryBootstrap-Windows-v0.1.1.zip.sha256
 ```
 
 The two hashes should match.
@@ -44,4 +44,3 @@ The two hashes should match.
 The interactive **Install** action changes workstation software and settings after confirmation. Start with **Verify configuration** or **Run system audit** when evaluating the package on another computer.
 
 Generated reports remain local under `platforms\windows\reports` and are not part of the downloaded release.
-

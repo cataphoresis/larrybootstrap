@@ -1,4 +1,4 @@
-# LarryBootstrap Windows v0.1.0
+# LarryBootstrap Windows v0.1.1
 
 This is the first packaged Windows release of the BBS-inspired LarryLauncher front end.
 
@@ -10,6 +10,8 @@ This is the first packaged Windows release of the BBS-inspired LarryLauncher fro
 - native Windows bootstrap and its PowerShell modules
 - shared standard profile
 - SHA-256 checksum beside the release archive
+- primary IPv4 address in the launcher information box
+- available space on the Windows system drive in the launcher information box
 
 ## Known boundaries
 
@@ -21,4 +23,3 @@ This is the first packaged Windows release of the BBS-inspired LarryLauncher fro
 ## Recommended first run
 
 Use `launcher.ps1 -Action Verify -Profile standard` before selecting the full installation workflow on a new system.
-

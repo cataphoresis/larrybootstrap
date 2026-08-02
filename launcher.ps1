@@ -18,7 +18,65 @@ $Bootstrap = Join-Path $Root "bootstrap.ps1"
 $Reports = Join-Path $Root "platforms\windows\reports"
 $Pwsh = (Get-Command pwsh.exe -ErrorAction Stop).Source
 
+function Get-PrimaryIPv4Address {
+    try {
+        $configuration = Get-NetIPConfiguration -ErrorAction Stop |
+            Where-Object { $_.IPv4DefaultGateway -and $_.IPv4Address } |
+            Select-Object -First 1
+        if ($configuration) {
+            return $configuration.IPv4Address.IPAddress
+        }
+    }
+    catch {
+        # Fall back to DNS-based discovery on systems without NetTCPIP access.
+    }
+
+    try {
+        $address = [Net.Dns]::GetHostAddresses([Net.Dns]::GetHostName()) |
+            Where-Object {
+                $_.AddressFamily -eq [Net.Sockets.AddressFamily]::InterNetwork -and
+                -not [Net.IPAddress]::IsLoopback($_)
+            } |
+            Select-Object -First 1
+        if ($address) {
+            return $address.IPAddressToString
+        }
+    }
+    catch {
+        # The banner remains usable when the machine is offline.
+    }
+
+    return "Unavailable"
+}
+
+function Get-SystemDriveFreeSpace {
+    try {
+        $driveName = $env:SystemDrive.TrimEnd('\').TrimEnd(':')
+        $drive = Get-PSDrive -Name $driveName -PSProvider FileSystem -ErrorAction Stop
+        return ("{0:N1} GB free" -f ($drive.Free / 1GB))
+    }
+    catch {
+        return "Unavailable"
+    }
+}
+
+function Limit-PanelValue {
+    param(
+        [string]$Value,
+        [int]$MaximumLength
+    )
+
+    if ($Value.Length -le $MaximumLength) {
+        return $Value
+    }
+
+    return $Value.Substring(0, $MaximumLength - 3) + "..."
+}
+
 function Show-LarryBanner {
+    $ipAddress = Limit-PanelValue -Value (Get-PrimaryIPv4Address) -MaximumLength 19
+    $diskFree = Limit-PanelValue -Value (Get-SystemDriveFreeSpace) -MaximumLength 17
+
     Write-Host ""
     Write-Host "             .-''''''''-." -ForegroundColor DarkGray
     Write-Host "          .-'  _      _  '-." -ForegroundColor DarkGray
@@ -39,6 +97,7 @@ function Show-LarryBanner {
     Write-Host "+----------------------------------------------------------+" -ForegroundColor DarkCyan
     Write-Host ("|  SYSTEM  Windows            PROFILE  {0,-17}|" -f $Profile) -ForegroundColor DarkCyan
     Write-Host ("|  USER    {0,-19} HOST     {1,-17}|" -f $env:USERNAME, $env:COMPUTERNAME) -ForegroundColor DarkCyan
+    Write-Host ("|  IP      {0,-19} DISK     {1,-17}|" -f $ipAddress, $diskFree) -ForegroundColor DarkCyan
     Write-Host "+----------------------------------------------------------+" -ForegroundColor DarkCyan
 }
 
