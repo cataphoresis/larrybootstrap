@@ -14,7 +14,7 @@ Recreates the preferred macOS environment for this MacBook.
 ## Planned application set
 
 - Firefox
-- Google Chrome
+- Safari (built in; secondary browser)
 - 1Password
 - Spotify
 - VLC

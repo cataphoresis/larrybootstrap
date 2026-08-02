@@ -1,8 +1,0 @@
-NAME          SIZE FSTYPE FSVER LABEL       MOUNTPOINTS UUID
-nvme0n1     233.8G                                      
-├─nvme0n1p1   299M vfat   FAT32             /boot/efi   7E82-CA4A
-├─nvme0n1p2  83.8G apfs                                 c0018c2c-5bb9-40f5-897a-7cfa97d9c368
-├─nvme0n1p3 100.6G ext4   1.0               /           9ac64dfb-f0f1-44f5-a8aa-8c86577690ec
-├─nvme0n1p4   9.3G exfat  1.0   OSXRESERVED             6A6A-B299
-└─nvme0n1p5  39.8G ntfs         BOOTCAMP                34F5EE1202469FF7
-nvme0n2         8K                                      

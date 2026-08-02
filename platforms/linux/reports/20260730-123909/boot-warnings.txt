@@ -1,6 +1,0 @@
-Hint: You are currently not seeing messages from other users and the system.
-      Users in groups 'adm', 'systemd-journal' can see all messages.
-      Pass -q to turn off this notice.
-Jul 30 12:37:12 linuxbook xdg-desktop-portal[1213]: pw.conf: can't load config client.conf: No such file or directory
-Jul 30 12:37:12 linuxbook xdg-desktop-portal[1213]: pw.conf: can't load config client.conf: No such file or directory
-Jul 30 12:37:12 linuxbook xdg-desktop-por[1213]: Failed connect to PipeWire: Couldn't create PipeWire context

@@ -1,1 +1,0 @@
-/home/mdjordan/Projects/linuxbook-bootstrap/modules/audit.sh: line 58: lsusb: command not found
