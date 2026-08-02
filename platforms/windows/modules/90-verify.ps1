@@ -88,7 +88,7 @@ function Find-DirectApplication {
 
 Write-Section "Core Tools"
 
-foreach ($Tool in @("pwsh", "git", "winget")) {
+foreach ($Tool in @("pwsh", "git", "gh", "winget")) {
     $Command = Get-Command $Tool -ErrorAction SilentlyContinue
 
     if ($Command) {

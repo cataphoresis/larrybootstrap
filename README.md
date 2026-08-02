@@ -80,6 +80,10 @@ verifies pip through `python -m pip`; Debian/Linux installs `python3`,
 verifies pip through `python3 -m pip`. Project dependencies should use a virtual
 environment instead of modifying the operating system's Python environment.
 
+GitHub CLI (`gh`) is also a baseline tool on Windows, Debian/Linux, and macOS
+so every bootstrap can authenticate, clone, inspect, and manage Larry ecosystem
+repositories through the same command surface.
+
 ## Terminal style
 
 LarryBootstrap uses an intentionally retro BBS-inspired terminal style on all

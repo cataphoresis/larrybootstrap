@@ -7,6 +7,7 @@ CORE_PACKAGES=(
     gnupg
     jq
     git
+    gh
     rsync
     unzip
     zip
@@ -50,8 +51,6 @@ FULL_PACKAGES=(
     # Lightweight development and text editing
     geany
     geany-plugins
-    gh
-
     # Android Platform Tools and USB permissions
     adb
     fastboot
