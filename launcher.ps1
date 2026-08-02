@@ -20,6 +20,20 @@ $Pwsh = (Get-Command pwsh.exe -ErrorAction Stop).Source
 
 function Show-LarryBanner {
     Write-Host ""
+    Write-Host "             .-''''''''-." -ForegroundColor DarkGray
+    Write-Host "          .-'  _      _  '-." -ForegroundColor DarkGray
+    Write-Host "         /   .--.____.--.   \" -ForegroundColor DarkGray
+    Write-Host "        |   / -  |  |  - \   |" -ForegroundColor DarkGray
+    Write-Host "        |   | o  |__|  o |   |" -ForegroundColor DarkGray
+    Write-Host "        |    \     _    /    |" -ForegroundColor DarkGray
+    Write-Host "        |   .:'.  --  .':.   |" -ForegroundColor DarkGray
+    Write-Host "         \  :.: '----' :.:  /" -ForegroundColor DarkGray
+    Write-Host "          '._  ________  _.'       __" -ForegroundColor DarkGray
+    Write-Host "              /|      |\        _/  \_" -ForegroundColor DarkGray
+    Write-Host "         ____/ |______| \____  / PUSH \" -ForegroundColor DarkGray
+    Write-Host "        /______/  ||  \______\ \______/" -ForegroundColor DarkGray
+    Write-Host "                 _||_          /______\" -ForegroundColor DarkGray
+    Write-Host ""
     Write-Host "+----------------------------------------------------------+" -ForegroundColor DarkCyan
     Write-Host "|  L A R R Y L A U N C H E R  //  NODE ONLINE            |" -ForegroundColor Cyan
     Write-Host "+----------------------------------------------------------+" -ForegroundColor DarkCyan
