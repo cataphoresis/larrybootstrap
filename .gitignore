@@ -7,3 +7,4 @@ platforms/*/reports/*
 !platforms/*/backups/.gitkeep
 !platforms/*/logs/.gitkeep
 !platforms/*/reports/.gitkeep
+dist/

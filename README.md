@@ -96,3 +96,22 @@ commit histories intact. Platform releases use prefixed tags, including
 
 The original standalone repositories remain recovery sources until the unified
 bootstrap has been validated on all three operating systems.
+
+## Packaging releases
+
+The initial packaged release targets Windows and preserves the tested
+`launcher.ps1` behavior. From PowerShell 7:
+
+```powershell
+.\scripts\package-windows.ps1 -Version 0.1.0
+```
+
+The command creates a versioned ZIP and SHA-256 checksum in `dist/`. The ZIP
+contains only the shared profile and Windows runtime dependencies needed by the
+launcher; it excludes the Linux and macOS implementations.
+
+Incremental launcher packaging follows this order:
+
+1. Windows v0.1.x — establish the package and release process.
+2. Linux v0.2.x — add a Linux-native launcher package and tests.
+3. macOS v0.3.x — add a macOS-native launcher package and tests.
