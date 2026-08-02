@@ -103,6 +103,13 @@ check_command git "Git"
 check_command gh "GitHub CLI"
 check_command curl "curl"
 check_command jq "jq"
+check_command python3 "Python"
+
+if python3 -m pip --version >/dev/null 2>&1; then
+    pass "pip" "$(python3 -m pip --version)"
+else
+    fail "pip" "python3 -m pip is unavailable"
+fi
 
 if command -v brew >/dev/null 2>&1; then
     pass "Homebrew version" "$(brew --version | head -n 1)"

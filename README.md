@@ -74,6 +74,12 @@ The root launchers detect or enforce the current platform and delegate to the
 corresponding native bootstrap. Platform-specific READMEs document additional
 profiles, behavior, and recovery details.
 
+Python is a baseline tool on every platform. Windows installs Python 3.13 and
+verifies pip through `python -m pip`; Debian/Linux installs `python3`,
+`python3-pip`, `python3-venv`, and `pipx`; macOS installs Homebrew Python and
+verifies pip through `python3 -m pip`. Project dependencies should use a virtual
+environment instead of modifying the operating system's Python environment.
+
 ## Terminal style
 
 LarryBootstrap uses an intentionally retro BBS-inspired terminal style on all

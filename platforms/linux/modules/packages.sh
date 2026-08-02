@@ -26,6 +26,10 @@ CORE_PACKAGES=(
     lsof
     tmux
     screen
+    python3
+    python3-pip
+    python3-venv
+    pipx
 )
 
 FULL_PACKAGES=(
@@ -43,11 +47,6 @@ FULL_PACKAGES=(
     firmware-linux-nonfree
     build-essential
     shellcheck
-    python3
-    python3-pip
-    python3-venv
-    pipx
-
     # Lightweight development and text editing
     geany
     geany-plugins

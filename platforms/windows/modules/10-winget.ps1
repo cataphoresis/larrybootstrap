@@ -155,6 +155,46 @@ foreach ($Package in $Packages) {
     }
 }
 
+Write-Section "Python Tooling"
+
+$PythonExecutable = Get-ChildItem `
+    -LiteralPath (Join-Path $env:LOCALAPPDATA "Programs\Python") `
+    -Filter "python.exe" `
+    -File `
+    -Recurse `
+    -ErrorAction SilentlyContinue |
+    Sort-Object FullName -Descending |
+    Select-Object -First 1
+
+if (-not $PythonExecutable) {
+    Write-Fail "Python tooling" "python.exe was not found after package installation"
+    Add-ReportLine "[FAIL] Python tooling              python.exe was not found"
+    $RequiredFailures++
+}
+else {
+    & $PythonExecutable.FullName -m ensurepip --upgrade | Out-Host
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Fail "Python pip" "ensurepip failed"
+        Add-ReportLine "[FAIL] Python pip                  ensurepip failed"
+        $RequiredFailures++
+    }
+    else {
+        $PythonRoot = Split-Path -Parent $PythonExecutable.FullName
+        $PythonScripts = Join-Path $PythonRoot "Scripts"
+        $UserPath = [Environment]::GetEnvironmentVariable("Path", "User")
+        $PathEntries = @($PythonRoot, $PythonScripts) + @(
+            $UserPath -split ";" | Where-Object { $_ }
+        )
+        $UpdatedPath = ($PathEntries | Select-Object -Unique) -join ";"
+        [Environment]::SetEnvironmentVariable("Path", $UpdatedPath, "User")
+
+        $PipVersion = & $PythonExecutable.FullName -m pip --version
+        Write-OK "Python tooling" $PipVersion
+        Add-ReportLine "[ OK ] Python tooling              $PipVersion"
+    }
+}
+
 Write-Section "WinGet Result"
 
 Write-InfoLine "Already present" $Present.ToString()

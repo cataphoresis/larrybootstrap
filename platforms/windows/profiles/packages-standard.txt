@@ -4,6 +4,7 @@
 Mozilla.Firefox|Firefox|true
 eloston.ungoogled-chromium|Chromium|false
 Microsoft.VisualStudioCode|Visual Studio Code|true
+Python.Python.3.13|Python 3.13|true
 Notepad++.Notepad++|Notepad++|true
 VideoLAN.VLC|VLC|true
 Spotify.Spotify|Spotify|true

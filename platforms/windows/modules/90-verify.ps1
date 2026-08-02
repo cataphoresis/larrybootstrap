@@ -99,6 +99,24 @@ foreach ($Tool in @("pwsh", "git", "winget")) {
     }
 }
 
+$Python = Get-Command python.exe -ErrorAction SilentlyContinue
+if ($Python -and $Python.Source -notlike "*\Microsoft\WindowsApps\python.exe") {
+    $PythonVersion = & $Python.Source --version 2>&1
+    Record-OK "Python" ([string]$PythonVersion)
+
+    $PipVersion = & $Python.Source -m pip --version 2>&1
+    if ($LASTEXITCODE -eq 0) {
+        Record-OK "pip" ([string]$PipVersion)
+    }
+    else {
+        Record-Fail "pip" "python -m pip is unavailable"
+    }
+}
+else {
+    Record-Fail "Python" "python.exe is unavailable or resolves to the Microsoft Store placeholder"
+    Record-Fail "pip" "cannot be checked without Python"
+}
+
 Write-Section "WinGet Applications"
 
 if (-not (Test-Path -LiteralPath $PackageManifestPath -PathType Leaf)) {
