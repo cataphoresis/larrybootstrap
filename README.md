@@ -44,6 +44,15 @@ The root launchers detect or enforce the current platform and delegate to the
 corresponding native bootstrap. Platform-specific READMEs document additional
 profiles, behavior, and recovery details.
 
+## Terminal style
+
+LarryBootstrap uses an intentionally retro BBS-inspired terminal style on all
+three operating systems. Main commands open with an ASCII banner and consistent
+profile, user, computer, system, shell, and start-time details. Status output
+uses `[ OK ]`, `[WARN]`, `[FAIL]`, and `[INFO]` markers. Any future animation
+must be lightweight, terminal-only, and automatically disabled for redirected
+output, logs, and unattended runs.
+
 ## Browser standard
 
 - Windows and Linux: Firefox primary, Chromium secondary.

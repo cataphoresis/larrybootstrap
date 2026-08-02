@@ -88,13 +88,19 @@ run_module() {
     "$path"
 }
 
-printf '\n============================================================\n'
-printf ' MacBook Bootstrap\n'
-printf '============================================================\n'
-printf 'Profile: %s\n' "$PROFILE"
-printf 'User:    %s\n' "$(id -un)"
-printf 'macOS:   %s\n' "$(sw_vers -productVersion)"
-printf 'Started: %s\n' "$(date)"
+show_banner() {
+    printf '\n============================================================\n'
+    printf ' macOS Bootstrap\n'
+    printf '============================================================\n'
+    printf 'Profile:    %s\n' "$PROFILE"
+    printf 'User:       %s\n' "$(id -un)"
+    printf 'Computer:   %s\n' "$(hostname -s)"
+    printf 'System:     macOS %s\n' "$(sw_vers -productVersion)"
+    printf 'Shell:      Bash %s\n' "$BASH_VERSION"
+    printf 'Started:    %s\n' "$(date)"
+}
+
+show_banner
 
 if [[ "$VERIFY_ONLY" == true ]]; then
     run_module "90-verify.sh"
