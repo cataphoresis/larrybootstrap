@@ -1,0 +1,49 @@
+{
+  "name": "standard",
+  "description": "Portable daily-use Larry workstation intent",
+  "applications": [
+    {
+      "key": "browser.primary",
+      "windows": "Mozilla.Firefox",
+      "linux": "firefox-esr",
+      "macos": "firefox"
+    },
+    {
+      "key": "browser.secondary",
+      "windows": "eloston.ungoogled-chromium",
+      "linux": "chromium",
+      "macos": "safari",
+      "macosBuiltIn": true
+    },
+    {
+      "key": "editor.code",
+      "windows": "Microsoft.VisualStudioCode",
+      "linux": "visual-studio-code",
+      "macos": "visual-studio-code"
+    },
+    {
+      "key": "editor.lightweight",
+      "windows": "Notepad++.Notepad++",
+      "linux": "geany",
+      "macos": "coteditor"
+    },
+    {
+      "key": "passwords",
+      "windows": "AgileBits.1Password",
+      "linux": "1password",
+      "macos": "1password"
+    },
+    {
+      "key": "media.video",
+      "windows": "VideoLAN.VLC",
+      "linux": "vlc",
+      "macos": "vlc"
+    },
+    {
+      "key": "remote.streaming",
+      "windows": "MoonlightGameStreamingProject.Moonlight",
+      "linux": "moonlight",
+      "macos": "moonlight"
+    }
+  ]
+}

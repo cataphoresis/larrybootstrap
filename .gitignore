@@ -1,0 +1,9 @@
+.DS_Store
+
+platforms/*/backups/*
+platforms/*/logs/*
+platforms/*/reports/*
+
+!platforms/*/backups/.gitkeep
+!platforms/*/logs/.gitkeep
+!platforms/*/reports/.gitkeep
