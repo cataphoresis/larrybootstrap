@@ -15,7 +15,34 @@ platforms/
   macos/               Bash and Homebrew implementation
 bootstrap.ps1          Windows entry point
 bootstrap.sh           macOS/Linux entry point
+launcher.ps1           Interactive Windows LarryLauncher
+launcher.sh            Interactive macOS/Linux LarryLauncher
 ```
+
+## LarryLauncher
+
+LarryLauncher is a thin BBS-inspired front end for the native bootstrap. It
+does not duplicate installation logic. Its menu provides install, verify,
+audit, and recent-report actions, then delegates to the platform entry point.
+
+Windows:
+
+```powershell
+.\launcher.ps1
+.\launcher.ps1 -Action Verify -Profile standard
+```
+
+macOS or Linux:
+
+```bash
+./launcher.sh
+./launcher.sh --action verify --profile standard
+```
+
+Selecting a full installation from the interactive menu requires confirmation.
+Passing an explicit install action is intended for scripts and runs immediately.
+Set `LARRY_ANIMATE=1` to enable the short connection effect in an interactive
+terminal; redirected and unattended output remains delay-free.
 
 ## Usage
 
