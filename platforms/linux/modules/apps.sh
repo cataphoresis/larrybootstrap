@@ -47,7 +47,7 @@ install_vscode() {
         https://update.code.visualstudio.com/latest/linux-deb-x64/stable \
         --output "$package"; then
         run_step "Install Visual Studio Code" \
-            sudo apt-get install -y "$package"
+            sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "$package"
     else
         failure "Could not download Visual Studio Code"
     fi
@@ -70,7 +70,7 @@ install_parsec() {
         https://builds.parsec.app/package/parsec-linux.deb \
         --output "$package"; then
 
-        if sudo apt-get install -y "$package"; then
+        if sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y "$package"; then
             success "Installed Parsec"
         else
             warning "Parsec did not install cleanly on Debian"
