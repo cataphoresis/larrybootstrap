@@ -56,22 +56,7 @@ case "$(uname -s)" in
 esac
 
 show_banner() {
-    printf '\n%s\n' \
-        "             .-''''''''-." \
-        "          .-'  _      _  '-." \
-        '         /   .--.____.--.   \' \
-        '        |   / -  |  |  - \   |' \
-        '        |   | o  |__|  o |   |' \
-        '        |    \     _    /    |' \
-        "        |   .:'.  --  .':.   |" \
-        "         \  :.: '----' :.:  /" \
-        "          '._  ________  _.'       __" \
-        '              /|      |\        _/  \_' \
-        '         ____/ |______| \____  / PUSH \' \
-        '        /______/  ||  \______\ \______/' \
-        '                 _||_          /______\' \
-        ''
-    printf '+----------------------------------------------------------+\n'
+    printf '\n+----------------------------------------------------------+\n'
     printf '|  L A R R Y L A U N C H E R  //  NODE ONLINE            |\n'
     printf '+----------------------------------------------------------+\n'
     printf '|  SYSTEM  %-18s PROFILE  %-17s|\n' "$PLATFORM" "$PROFILE"
@@ -81,12 +66,16 @@ show_banner() {
 
 connection_effect() {
     [[ "${LARRY_ANIMATE:-0}" == "1" && -t 1 ]] || return 0
-    printf 'CONNECTING'
-    for _ in 1 2 3; do
-        sleep 0.14
-        printf '.'
+    local stage
+    for stage in 'DIALING NODE' 'NEGOTIATING 9600 BAUD' 'AUTHENTICATING OPERATOR'; do
+        printf '%-28s' "$stage"
+        for _ in 1 2 3; do
+            sleep 0.22
+            printf '.'
+        done
+        printf ' OK\n'
     done
-    printf ' ONLINE\n'
+    printf 'CARRIER DETECTED // LARRYLINK ONLINE\n'
 }
 
 show_reports() {

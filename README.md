@@ -24,9 +24,6 @@ launcher.sh            Interactive macOS/Linux LarryLauncher
 LarryLauncher is a thin BBS-inspired front end for the native bootstrap. It
 does not duplicate installation logic. Its menu provides install, verify,
 audit, and recent-report actions, then delegates to the platform entry point.
-Its home screen carries the original minimalist Larry ASCII mark: a tired,
-bespectacled operator reluctantly pressing the button, distinct from any
-existing game character.
 
 Windows:
 

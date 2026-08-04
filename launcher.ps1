@@ -78,20 +78,6 @@ function Show-LarryBanner {
     $diskFree = Limit-PanelValue -Value (Get-SystemDriveFreeSpace) -MaximumLength 17
 
     Write-Host ""
-    Write-Host "             .-''''''''-." -ForegroundColor DarkGray
-    Write-Host "          .-'  _      _  '-." -ForegroundColor DarkGray
-    Write-Host "         /   .--.____.--.   \" -ForegroundColor DarkGray
-    Write-Host "        |   / -  |  |  - \   |" -ForegroundColor DarkGray
-    Write-Host "        |   | o  |__|  o |   |" -ForegroundColor DarkGray
-    Write-Host "        |    \     _    /    |" -ForegroundColor DarkGray
-    Write-Host "        |   .:'.  --  .':.   |" -ForegroundColor DarkGray
-    Write-Host "         \  :.: '----' :.:  /" -ForegroundColor DarkGray
-    Write-Host "          '._  ________  _.'       __" -ForegroundColor DarkGray
-    Write-Host "              /|      |\        _/  \_" -ForegroundColor DarkGray
-    Write-Host "         ____/ |______| \____  / PUSH \" -ForegroundColor DarkGray
-    Write-Host "        /______/  ||  \______\ \______/" -ForegroundColor DarkGray
-    Write-Host "                 _||_          /______\" -ForegroundColor DarkGray
-    Write-Host ""
     Write-Host "+----------------------------------------------------------+" -ForegroundColor DarkCyan
     Write-Host "|  L A R R Y L A U N C H E R  //  NODE ONLINE            |" -ForegroundColor Cyan
     Write-Host "+----------------------------------------------------------+" -ForegroundColor DarkCyan
@@ -106,12 +92,15 @@ function Invoke-ConnectionEffect {
         return
     }
 
-    Write-Host "CONNECTING" -ForegroundColor DarkGray -NoNewline
-    1..3 | ForEach-Object {
-        Start-Sleep -Milliseconds 140
-        Write-Host "." -ForegroundColor DarkGray -NoNewline
+    foreach ($Stage in @("DIALING NODE", "NEGOTIATING 9600 BAUD", "AUTHENTICATING OPERATOR")) {
+        Write-Host ("{0,-28}" -f $Stage) -ForegroundColor DarkGray -NoNewline
+        1..3 | ForEach-Object {
+            Start-Sleep -Milliseconds 220
+            Write-Host "." -ForegroundColor DarkGray -NoNewline
+        }
+        Write-Host " OK" -ForegroundColor Green
     }
-    Write-Host " ONLINE" -ForegroundColor Green
+    Write-Host "CARRIER DETECTED // LARRYLINK ONLINE" -ForegroundColor Cyan
 }
 
 function Invoke-Bootstrap {
