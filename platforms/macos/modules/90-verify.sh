@@ -40,9 +40,21 @@ fail() {
 check_command() {
     local command_name="$1"
     local label="$2"
+    local version_output
+    local version
 
     if command -v "$command_name" >/dev/null 2>&1; then
-        pass "$label" "$(command -v "$command_name")"
+        version_output="$("$command_name" --version 2>&1 | head -n 1)"
+        version="$(printf '%s\n' "$version_output" \
+            | grep -Eo '[vV]?[0-9]+([.][0-9A-Za-z-]+)+' \
+            | head -n 1)"
+        if [[ -n "$version" ]]; then
+            version="${version#v}"
+            version="${version#V}"
+            pass "$label" "v$version"
+        else
+            fail "$label" "version output was not recognized"
+        fi
     else
         fail "$label" "command not found"
     fi
@@ -106,15 +118,10 @@ check_command jq "jq"
 check_command python3 "Python"
 
 if python3 -m pip --version >/dev/null 2>&1; then
-    pass "pip" "$(python3 -m pip --version)"
+    pip_version="$(python3 -m pip --version | awk '{print $2}')"
+    pass "pip" "v$pip_version"
 else
     fail "pip" "python3 -m pip is unavailable"
-fi
-
-if command -v brew >/dev/null 2>&1; then
-    pass "Homebrew version" "$(brew --version | head -n 1)"
-else
-    fail "Homebrew version" "unavailable"
 fi
 
 section "Essential Applications"
@@ -122,8 +129,9 @@ section "Essential Applications"
 check_app "Firefox" \
     "/Applications/Firefox.app"
 
-check_app "Chromium" \
-    "/Applications/Chromium.app"
+check_app "Safari" \
+    "/Applications/Safari.app" \
+    "/System/Applications/Safari.app"
 
 check_app "Visual Studio Code" \
     "/Applications/Visual Studio Code.app"

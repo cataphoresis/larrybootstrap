@@ -80,6 +80,95 @@ function Find-DirectApplication {
     return $null
 }
 
+function Get-CoreToolVersion {
+    param(
+        [Parameter(Mandatory)][string]$Name,
+        [Parameter(Mandatory)][System.Management.Automation.CommandInfo]$Command
+    )
+
+    $VersionText = switch ($Name) {
+        "pwsh" {
+            & $Command.Source -NoLogo -NoProfile -Command '$PSVersionTable.PSVersion.ToString()' 2>&1
+            break
+        }
+        "git" {
+            & $Command.Source --version 2>&1
+            break
+        }
+        "gh" {
+            (& $Command.Source --version 2>&1 | Select-Object -First 1)
+            break
+        }
+        "winget" {
+            # The alias can fail when its output is captured under PowerShell
+            # 7.6, so read the owning App Installer package version directly.
+            try {
+                $Package = Get-AppxPackage -Name Microsoft.DesktopAppInstaller -ErrorAction Stop |
+                    Sort-Object Version -Descending |
+                    Select-Object -First 1
+                if ($Package) {
+                    return "v$($Package.Version)"
+                }
+            }
+            catch {
+                # Some stripped-down environments cannot load the Appx module.
+            }
+
+            $PackageKeys = Get-ChildItem `
+                "HKCU:\Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Packages" `
+                -ErrorAction SilentlyContinue
+            foreach ($PackageKey in $PackageKeys) {
+                if ($PackageKey.PSChildName -match '^Microsoft\.DesktopAppInstaller_([^_]+)_') {
+                    return "v$($Matches[1])"
+                }
+            }
+
+            return $null
+        }
+    }
+
+    if ($LASTEXITCODE -ne 0 -or -not $VersionText) {
+        return $null
+    }
+
+    $Value = ([string]$VersionText).Trim()
+    $Value = $Value -replace '^git version\s+', ''
+    $Value = $Value -replace '^gh version\s+', ''
+    if ($Value -match '^(\S+)') {
+        $Value = $Matches[1]
+    }
+
+    if ($Value -notmatch '^v') {
+        $Value = "v$Value"
+    }
+
+    return $Value
+}
+
+function Resolve-CoreToolCommand {
+    param([Parameter(Mandatory)][string]$Name)
+
+    $Command = Get-Command $Name -ErrorAction SilentlyContinue
+    if ($Command -or $Name -ne "gh") {
+        return $Command
+    }
+
+    # A launcher started before WinGet installs GitHub CLI inherits the old PATH.
+    # Resolve the standard install locations so verification works immediately.
+    $Candidates = @(
+        (Join-Path $env:ProgramFiles "GitHub CLI\gh.exe"),
+        (Join-Path $env:LOCALAPPDATA "Programs\GitHub CLI\gh.exe")
+    )
+
+    foreach ($Candidate in $Candidates) {
+        if (Test-Path -LiteralPath $Candidate -PathType Leaf) {
+            return Get-Command $Candidate -ErrorAction SilentlyContinue
+        }
+    }
+
+    return $null
+}
+
 "Windows Bootstrap Verification" | Set-Content -Encoding UTF8 $Report
 "==============================" | Add-Content $Report
 "Run date: $(Get-Date)" | Add-Content $Report
@@ -89,10 +178,16 @@ function Find-DirectApplication {
 Write-Section "Core Tools"
 
 foreach ($Tool in @("pwsh", "git", "gh", "winget")) {
-    $Command = Get-Command $Tool -ErrorAction SilentlyContinue
+    $Command = Resolve-CoreToolCommand -Name $Tool
 
     if ($Command) {
-        Record-OK $Tool $Command.Source
+        $ToolVersion = Get-CoreToolVersion -Name $Tool -Command $Command
+        if ($ToolVersion) {
+            Record-OK $Tool $ToolVersion
+        }
+        else {
+            Record-Fail $Tool "version query failed"
+        }
     }
     else {
         Record-Fail $Tool "command not found"
@@ -102,11 +197,18 @@ foreach ($Tool in @("pwsh", "git", "gh", "winget")) {
 $Python = Get-Command python.exe -ErrorAction SilentlyContinue
 if ($Python -and $Python.Source -notlike "*\Microsoft\WindowsApps\python.exe") {
     $PythonVersion = & $Python.Source --version 2>&1
-    Record-OK "Python" ([string]$PythonVersion)
+    $PythonVersion = ([string]$PythonVersion).Trim() -replace '^Python\s+', ''
+    Record-OK "Python" "v$PythonVersion"
 
     $PipVersion = & $Python.Source -m pip --version 2>&1
     if ($LASTEXITCODE -eq 0) {
-        Record-OK "pip" ([string]$PipVersion)
+        $PipVersion = ([string]$PipVersion).Trim()
+        if ($PipVersion -match '^pip\s+(\S+)') {
+            Record-OK "pip" "v$($Matches[1])"
+        }
+        else {
+            Record-Fail "pip" "version output was not recognized"
+        }
     }
     else {
         Record-Fail "pip" "python -m pip is unavailable"
