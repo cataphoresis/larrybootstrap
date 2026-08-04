@@ -112,13 +112,33 @@ Invoke-AuditCollection "Services" {
     $StoppedAutomatic = @(Get-Service |
         Where-Object { $_.StartType -eq "Automatic" -and $_.Status -ne "Running" } |
         Sort-Object DisplayName)
-    if ($StoppedAutomatic.Count -eq 0) {
+
+    # These automatic services are intentionally trigger-started or used only
+    # on demand, so a stopped state is normal on an otherwise healthy system.
+    $KnownOnDemandServices = @(
+        "MapsBroker",
+        "sppsvc",
+        "TrustedInstaller",
+        "WSLService"
+    )
+    $OnDemandStopped = @($StoppedAutomatic |
+        Where-Object Name -in $KnownOnDemandServices)
+    $UnexpectedStopped = @($StoppedAutomatic |
+        Where-Object Name -notin $KnownOnDemandServices)
+
+    if ($UnexpectedStopped.Count -eq 0) {
         Record-AuditOK "Automatic services" "all running"
     }
     else {
-        Record-AuditWarn "Automatic services" "$($StoppedAutomatic.Count) stopped"
-        $StoppedAutomatic | Select-Object -First 20 |
+        Record-AuditWarn "Automatic services" "$($UnexpectedStopped.Count) unexpectedly stopped"
+        $UnexpectedStopped | Select-Object -First 20 |
             ForEach-Object { Add-AuditLine ("Stopped: {0} ({1})" -f $_.DisplayName, $_.Name) }
+    }
+
+    if ($OnDemandStopped.Count -gt 0) {
+        Record-AuditInfo "On-demand services" "$($OnDemandStopped.Count) stopped normally"
+        $OnDemandStopped |
+            ForEach-Object { Add-AuditLine ("On demand: {0} ({1})" -f $_.DisplayName, $_.Name) }
     }
 }
 
@@ -133,7 +153,10 @@ Invoke-AuditCollection "Event logs" {
             } -ErrorAction SilentlyContinue)
         $Errors = @($Events | Where-Object Level -in 1, 2)
         $EventWarnings = @($Events | Where-Object Level -eq 3)
-        $Message = "$($Errors.Count) errors, $($EventWarnings.Count) warnings in 24h"
+        $EventGroups = @($Events |
+            Group-Object ProviderName, Id |
+            Sort-Object Count -Descending)
+        $Message = "$($Errors.Count) errors, $($EventWarnings.Count) warnings; $($EventGroups.Count) event types"
         if ($Errors.Count -gt 0) {
             Record-AuditWarn "$LogName log" $Message
         }
@@ -141,11 +164,15 @@ Invoke-AuditCollection "Event logs" {
             Record-AuditOK "$LogName log" $Message
         }
 
-        $Events | Select-Object -First 30 |
-            ForEach-Object {
-                $Summary = ([string]$_.Message -replace '\s+', ' ').Trim()
-                Add-AuditLine ("{0:u} ID {1}: {2}" -f $_.TimeCreated, $_.Id, $Summary)
+        foreach ($Group in $EventGroups | Select-Object -First 15) {
+            $Sample = $Group.Group | Sort-Object TimeCreated -Descending | Select-Object -First 1
+            $Summary = ([string]$Sample.Message -replace '\s+', ' ').Trim()
+            if ($Summary.Length -gt 300) {
+                $Summary = $Summary.Substring(0, 297) + "..."
             }
+            Add-AuditLine ("{0}x {1} ID {2}; latest {3:u}: {4}" -f
+                $Group.Count, $Sample.ProviderName, $Sample.Id, $Sample.TimeCreated, $Summary)
+        }
     }
 }
 
@@ -176,7 +203,11 @@ else {
 }
 
 Add-AuditSection "Security"
-Invoke-AuditCollection "Windows Security" {
+if (-not (Get-Command Get-MpComputerStatus -ErrorAction SilentlyContinue)) {
+    Record-AuditInfo "Microsoft Defender" "cmdlets unavailable; removed, disabled, or third-party protection"
+}
+else {
+    Invoke-AuditCollection "Windows Security" {
     $Defender = Get-MpComputerStatus -ErrorAction Stop
     if ($Defender.AntivirusEnabled -and $Defender.RealTimeProtectionEnabled) {
         Record-AuditOK "Microsoft Defender" "antivirus and real-time protection enabled"
@@ -185,6 +216,7 @@ Invoke-AuditCollection "Windows Security" {
         Record-AuditWarn "Microsoft Defender" "one or more protections disabled"
     }
     Record-AuditInfo "Signature age" "$($Defender.AntivirusSignatureAge) day(s)"
+    }
 }
 
 Write-Section "Audit Result"
