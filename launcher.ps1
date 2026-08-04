@@ -15,6 +15,7 @@ if (-not $IsWindows) {
 
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Bootstrap = Join-Path $Root "bootstrap.ps1"
+$AuditModule = Join-Path $Root "platforms\windows\modules\80-audit.ps1"
 $Reports = Join-Path $Root "platforms\windows\reports"
 $Pwsh = (Get-Command pwsh.exe -ErrorAction Stop).Source
 
@@ -120,6 +121,16 @@ function Invoke-Bootstrap {
     return $exitCode
 }
 
+function Invoke-SystemAudit {
+    if (-not (Test-Path -LiteralPath $AuditModule -PathType Leaf)) {
+        throw "Audit module not found: $AuditModule"
+    }
+
+    & $Pwsh -NoLogo -NoProfile -File $AuditModule | Out-Host
+    $exitCode = $LASTEXITCODE
+    return $exitCode
+}
+
 function Show-Reports {
     Write-Host ""
     Write-Host "Recent Reports" -ForegroundColor Cyan
@@ -153,7 +164,7 @@ function Invoke-LarryAction {
     switch ($SelectedAction) {
         "Install" { return Invoke-Bootstrap }
         "Verify"  { return Invoke-Bootstrap -VerifyOnly }
-        "Audit"   { return Invoke-Bootstrap -VerifyOnly }
+        "Audit"   { return Invoke-SystemAudit }
         "Reports" { Show-Reports; return 0 }
         "Exit"    { return 0 }
         default    { throw "Unsupported action: $SelectedAction" }

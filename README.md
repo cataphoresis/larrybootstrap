@@ -25,6 +25,11 @@ LarryLauncher is a thin BBS-inspired front end for the native bootstrap. It
 does not duplicate installation logic. Its menu provides install, verify,
 audit, and recent-report actions, then delegates to the platform entry point.
 
+Verification checks the workstation against the selected bootstrap profile.
+Audit is a separate read-only system-health snapshot covering system uptime,
+storage, networking, services, recent event warnings, startup entries, pending
+reboots, and Windows Security status.
+
 Windows:
 
 ```powershell
