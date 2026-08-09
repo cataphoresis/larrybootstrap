@@ -40,6 +40,18 @@
       "macos": "vlc"
     },
     {
+      "key": "media.music",
+      "windows": "Spotify.Spotify",
+      "linux": "com.spotify.Client",
+      "macos": "spotify"
+    },
+    {
+      "key": "utility.archive",
+      "windows": "7zip.7zip",
+      "linux": "p7zip-full",
+      "macos": "keka"
+    },
+    {
       "key": "remote.streaming",
       "windows": "MoonlightGameStreamingProject.Moonlight",
       "linux": "moonlight",
