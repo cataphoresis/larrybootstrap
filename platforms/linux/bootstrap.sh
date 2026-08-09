@@ -8,14 +8,37 @@ MODE="${1:-full}"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 LOG_FILE="$LOG_DIR/bootstrap-$TIMESTAMP.log"
 
+if [[ -t 1 ]]; then
+    LARRY_COLOR=1
+else
+    LARRY_COLOR=0
+fi
+export LARRY_COLOR
+
 mkdir -p "$LOG_DIR"
 
-exec > >(tee -a "$LOG_FILE") 2>&1
+if [[ "$LARRY_COLOR" == "1" ]]; then
+    exec > >(
+        tee >(
+            sed -E $'s/\x1B\\[[0-9;]*[[:alpha:]]//g' >> "$LOG_FILE"
+        )
+    ) 2>&1
+else
+    exec > >(tee -a "$LOG_FILE") 2>&1
+fi
 
+# Module paths are resolved dynamically relative to this script.
+# shellcheck disable=SC1091
 source "$MODULE_DIR/common.sh"
+# shellcheck disable=SC1091
 source "$MODULE_DIR/packages.sh"
+# shellcheck disable=SC1091
 source "$MODULE_DIR/apps.sh"
+# shellcheck disable=SC1091
 source "$MODULE_DIR/ssh.sh"
+# shellcheck disable=SC1091
+source "$MODULE_DIR/storage.sh"
+# shellcheck disable=SC1091
 source "$MODULE_DIR/audit.sh"
 
 show_header
@@ -25,6 +48,7 @@ case "$MODE" in
         require_debian
         require_normal_user
         acquire_sudo
+        wait_for_package_manager || exit 1
         apt_repair
         configure_multiarch
         apt_update_upgrade
@@ -35,21 +59,25 @@ case "$MODE" in
 
     full)
         require_debian
+        require_amd64
         require_normal_user
         acquire_sudo
+        wait_for_package_manager || exit 1
         apt_repair
         configure_multiarch
         apt_update_upgrade
         install_core_packages
+        configure_package_defaults
         install_full_packages
         configure_flatpak
         install_heroic
         install_vscode
-        install_parsec
         install_1password
         install_spotify
+        install_rpi_imager
         install_balena_etcher
         configure_ssh
+        configure_local_filesystems
         configure_user_groups
         enable_trim
         safe_package_cleanup
@@ -69,4 +97,5 @@ case "$MODE" in
         ;;
 esac
 
+show_application_status
 show_summary

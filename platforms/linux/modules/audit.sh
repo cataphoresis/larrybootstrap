@@ -66,5 +66,64 @@ capture_audit() {
     flatpak list \
         > "$reports/flatpaks.txt" 2>&1 || true
 
-    success "Created audit report at $reports"
+
+    {
+        cat /etc/os-release
+        echo
+        uname -a
+    } > "$reports/os-release.txt"
+
+    {
+        printf 'dpkg architecture: %s\n' "$(dpkg --print-architecture)"
+        printf 'machine architecture: %s\n' "$(uname -m)"
+    } > "$reports/architecture.txt"
+
+    {
+        echo "=== dpkg --audit ==="
+        dpkg --audit || true
+        echo
+        echo "=== apt-get check ==="
+        apt-get -o Debug::NoLocking=1 check || true
+    } > "$reports/apt-health.txt" 2>&1
+
+    apt list --upgradable 2>/dev/null \
+        > "$reports/pending-upgrades.txt" || true
+
+    {
+        echo "=== addresses ==="
+        ip -brief address
+        echo
+        echo "=== routes ==="
+        ip route
+    } > "$reports/network.txt" 2>&1
+
+    {
+        printf 'enabled: '
+        systemctl is-enabled ssh 2>&1 || true
+        printf 'active: '
+        systemctl is-active ssh 2>&1 || true
+        printf 'user-ed25519-key: '
+        if [[ -f "$HOME/.ssh/id_ed25519" ]]; then
+            echo "present"
+        else
+            echo "absent"
+        fi
+    } > "$reports/ssh-summary.txt"
+
+    flatpak remotes --columns=name,url \
+        > "$reports/flatpak-remotes.txt" 2>&1 || true
+
+    {
+        if id -nG "$USER" | tr ' ' '\n' | grep -qx wireshark; then
+            echo "Wireshark capture access enabled for user."
+            echo "A re-login may be required if group membership was added recently."
+        else
+            echo "User is not currently a member of the wireshark group."
+        fi
+    } > "$reports/wireshark-access.txt"
+
+    apt-get -o Debug::NoLocking=1 -s autoremove --purge 2>&1 |
+        tee "$reports/autoremove-simulation.txt" >/dev/null || true
+
+    success "Created audit report: $(display_path "$reports")"
 }

@@ -3,10 +3,14 @@
 configure_ssh() {
     section "Configuring SSH server"
 
-    sudo install -d -m 755 /etc/ssh/sshd_config.d
+    local config_dir="/etc/ssh/sshd_config.d"
+    local config_file="$config_dir/10-linuxbook.conf"
+    local temp_file
+    local config_changed=false
 
-    sudo tee /etc/ssh/sshd_config.d/10-linuxbook.conf \
-        >/dev/null <<'CONFIG'
+    temp_file="$(mktemp)"
+
+    cat > "$temp_file" <<'CONFIG'
 # LinuxBook SSH configuration
 PermitRootLogin no
 PasswordAuthentication yes
@@ -14,6 +18,19 @@ PubkeyAuthentication yes
 X11Forwarding no
 UseDNS no
 CONFIG
+
+    sudo install -d -m 755 "$config_dir"
+
+    if [[ ! -f "$config_file" ]] ||
+       ! sudo cmp -s "$temp_file" "$config_file"; then
+        sudo install -m 644 "$temp_file" "$config_file"
+        config_changed=true
+        success "Updated LinuxBook SSH configuration"
+    else
+        echo "LinuxBook SSH configuration is already current."
+    fi
+
+    rm -f "$temp_file"
 
     if sudo sshd -t; then
         success "SSH configuration passed validation"
@@ -25,25 +42,21 @@ CONFIG
     run_step "Enable and start the SSH server" \
         sudo systemctl enable --now ssh
 
-    if [[ ! -f "$HOME/.ssh/id_ed25519" ]]; then
-        mkdir -p "$HOME/.ssh"
-        chmod 700 "$HOME/.ssh"
+    if [[ "$config_changed" == true ]]; then
+        run_step "Reload SSH server configuration" \
+            sudo systemctl reload ssh
+    fi
 
-        ssh-keygen \
-            -t ed25519 \
-            -a 100 \
-            -C "$USER@$(hostname)" \
-            -f "$HOME/.ssh/id_ed25519" \
-            -N ""
-
-        success "Generated an Ed25519 SSH key"
+    if [[ -f "$HOME/.ssh/id_ed25519" ]]; then
+        echo "Existing user Ed25519 SSH key retained."
     else
-        echo "Existing SSH key retained."
+        warning "No user Ed25519 SSH key found; no key was generated automatically"
     fi
 
     echo
     echo "SSH status:"
-    systemctl --no-pager --full status ssh 2>/dev/null |
+    systemctl --no-pager --full status ssh 2>&1 |
+        grep -v '^Warning: some journal files were not opened due to insufficient permissions\.$' |
         head -20 || true
 
     echo

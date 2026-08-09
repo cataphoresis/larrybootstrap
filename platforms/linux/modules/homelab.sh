@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+
+# LEGACY / NOT USED BY bootstrap.sh
+#
+# Retained for future homelab/OMV integration work.
+# This script is not part of the LinuxBook workstation release path
+# and should not be invoked by core, full, or audit modes.
+
 set -e
 
 sudo apt update

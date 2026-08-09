@@ -30,7 +30,6 @@ CORE_PACKAGES=(
 
 FULL_PACKAGES=(
     steam-installer
-    rpi-imager
     gparted
     exfatprogs
     ntfs-3g
@@ -38,7 +37,6 @@ FULL_PACKAGES=(
     lm-sensors
     mesa-utils
     vainfo
-    intel-microcode
     firmware-linux
     firmware-linux-nonfree
     build-essential
@@ -65,7 +63,7 @@ FULL_PACKAGES=(
     tcpdump
     wireshark
     traceroute
-    dnsutils
+    bind9-dnsutils
     ethtool
     whois
     mtr-tiny
@@ -77,9 +75,54 @@ install_core_packages() {
         "${CORE_PACKAGES[@]}"
 }
 
+configure_package_defaults() {
+    section "Configuring package defaults"
+
+    local failed=false
+
+    if echo 'iperf3 iperf3/start_daemon boolean false' |
+       sudo debconf-set-selections; then
+        status_ok
+        printf ' %-18s %s\n' "iperf3" "daemon disabled"
+    else
+        failure "Could not configure iperf3 package default"
+        failed=true
+    fi
+
+    if echo 'wireshark-common wireshark-common/install-setuid boolean true' |
+       sudo debconf-set-selections; then
+        status_ok
+        printf ' %-18s %s\n' "Wireshark" "non-root capture enabled"
+    else
+        failure "Could not configure Wireshark package default"
+        failed=true
+    fi
+
+    if echo 'code code/add-microsoft-repo boolean true' |
+       sudo debconf-set-selections; then
+        status_ok
+        printf ' %-18s %s\n' "VS Code" "Microsoft update repository enabled"
+    else
+        failure "Could not configure Visual Studio Code package default"
+        failed=true
+    fi
+
+    if [[ "$failed" == true ]]; then
+        return 1
+    fi
+
+    success "Configured noninteractive package defaults"
+}
 install_full_packages() {
     install_apt_packages "Installing full utility set" \
         "${FULL_PACKAGES[@]}"
+
+    if grep -qm1 '^vendor_id[[:space:]]*: GenuineIntel$' /proc/cpuinfo; then
+        install_apt_packages "Installing Intel CPU microcode" \
+            intel-microcode
+    else
+        echo "Intel CPU not detected; skipping intel-microcode."
+    fi
 }
 
 configure_user_groups() {
@@ -123,8 +166,12 @@ enable_trim() {
 safe_package_cleanup() {
     section "Safe package cleanup"
 
-    run_step "Remove unused dependency packages" \
-        sudo apt-get autoremove --purge -y
+    echo "Autoremove is intentionally not run automatically."
+    echo "Packages APT currently considers removable:"
+
+    sudo apt-get -s autoremove --purge 2>/dev/null |
+        awk '/^Remv / {print "  " $2}' ||
+        true
 
     run_step "Clean obsolete downloaded packages" \
         sudo apt-get autoclean
