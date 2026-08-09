@@ -1,4 +1,4 @@
-param()
+param([switch]$DryRun)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -10,16 +10,14 @@ $SchemaPath = Join-Path $Root "schema\powershell.json"
 $Schema = Get-Content -LiteralPath $SchemaPath -Raw | ConvertFrom-Json
 $Timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
 $BackupRoot = Join-Path $Root "backups\powershell-$Timestamp"
-$Report = New-TimestampedReport -RootDirectory $Root -Prefix "powershell"
+$Report = New-TimestampedReport -RootDirectory $Root -Prefix "powershell" -DryRun:$DryRun
 $Failures = 0
 $Warnings = 0
 $Changes = 0
 
-New-Item -ItemType Directory -Force -Path $BackupRoot | Out-Null
-
 function Add-ReportLine {
     param([AllowEmptyString()][string]$Text)
-    $Text | Add-Content -Encoding UTF8 $Report
+    if ($Report) { $Text | Add-Content -Encoding UTF8 $Report }
 }
 
 function Record-OK {
@@ -42,11 +40,11 @@ function Record-Fail {
     Add-ReportLine ("[FAIL] {0,-28} {1}" -f $Label, $Message)
 }
 
-"Windows PowerShell Configuration" | Set-Content -Encoding UTF8 $Report
-"================================" | Add-Content $Report
-"Run date: $(Get-Date)" | Add-Content $Report
-"Schema: $SchemaPath" | Add-Content $Report
-"" | Add-Content $Report
+Add-ReportLine "Windows PowerShell Configuration"
+Add-ReportLine "================================"
+Add-ReportLine "Run date: $(Get-Date)"
+Add-ReportLine "Schema: $SchemaPath"
+Add-ReportLine ""
 
 Write-Section "Larry PowerShell Configuration"
 
@@ -61,8 +59,18 @@ $PwshPath = $PwshCommand.Source
 $ProjectsPath = Join-Path $HOME "Projects"
 Record-OK "PowerShell 7" $PwshPath
 
-New-Item -ItemType Directory -Force -Path $ProjectsPath | Out-Null
-Record-OK "Projects directory" $ProjectsPath
+if (Test-Path -LiteralPath $ProjectsPath -PathType Container) {
+    Record-OK "Projects directory" $ProjectsPath
+}
+elseif ($DryRun) {
+    $Changes++
+    Record-OK "Projects directory" "would create $ProjectsPath"
+}
+else {
+    New-Item -ItemType Directory -Force -Path $ProjectsPath | Out-Null
+    $Changes++
+    Record-OK "Projects directory" "created $ProjectsPath"
+}
 
 Write-Section "PowerShell Profile"
 
@@ -75,11 +83,9 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($ProfilePath)) {
 
 $ProfilePath = [string]$ProfilePath
 $ProfileDirectory = Split-Path -Parent $ProfilePath
-New-Item -ItemType Directory -Force -Path $ProfileDirectory | Out-Null
+if (-not $DryRun) { New-Item -ItemType Directory -Force -Path $ProfileDirectory | Out-Null }
 
 $ExistingProfile = if (Test-Path -LiteralPath $ProfilePath) {
-    Copy-Item -LiteralPath $ProfilePath -Destination (Join-Path $BackupRoot "Microsoft.PowerShell_profile.ps1") -Force
-    Record-OK "Profile backup" $BackupRoot
     Get-Content -LiteralPath $ProfilePath -Raw
 }
 else {
@@ -144,9 +150,19 @@ else {
 }
 
 if ($UpdatedProfile -ne $ExistingProfile) {
-    Set-Content -LiteralPath $ProfilePath -Value $UpdatedProfile -Encoding UTF8
     $Changes++
-    Record-OK "Managed profile" "updated $ProfilePath"
+    if ($DryRun) {
+        Record-OK "Managed profile" "would update $ProfilePath"
+    }
+    else {
+        New-Item -ItemType Directory -Force -Path $BackupRoot | Out-Null
+        if (Test-Path -LiteralPath $ProfilePath -PathType Leaf) {
+            Copy-Item -LiteralPath $ProfilePath -Destination (Join-Path $BackupRoot "Microsoft.PowerShell_profile.ps1") -Force
+            Record-OK "Profile backup" $BackupRoot
+        }
+        Set-Content -LiteralPath $ProfilePath -Value $UpdatedProfile -Encoding UTF8
+        Record-OK "Managed profile" "updated $ProfilePath"
+    }
 }
 else {
     Record-OK "Managed profile" "already configured"
@@ -159,9 +175,14 @@ foreach ($Name in @("EDITOR", "VISUAL")) {
     $CurrentValue = [Environment]::GetEnvironmentVariable($Name, "User")
 
     if ($CurrentValue -ne $Value) {
-        [Environment]::SetEnvironmentVariable($Name, $Value, "User")
         $Changes++
-        Record-OK $Name "set to $Value"
+        if ($DryRun) {
+            Record-OK $Name "would set to $Value"
+        }
+        else {
+            [Environment]::SetEnvironmentVariable($Name, $Value, "User")
+            Record-OK $Name "set to $Value"
+        }
     }
     else {
         Record-OK $Name "already set to $Value"
@@ -172,21 +193,41 @@ Write-Section "Larry PowerShell Shortcut"
 
 $ShortcutDirectory = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs"
 $ShortcutPath = Join-Path $ShortcutDirectory "$($Schema.name).lnk"
-New-Item -ItemType Directory -Force -Path $ShortcutDirectory | Out-Null
-
 $Shell = New-Object -ComObject WScript.Shell
 $Shortcut = $Shell.CreateShortcut($ShortcutPath)
-$Shortcut.TargetPath = $PwshPath
-$Shortcut.Arguments = "-NoLogo"
-$Shortcut.WorkingDirectory = $ProjectsPath
-$Shortcut.Description = "Open $($Schema.name)"
-$Shortcut.IconLocation = "$PwshPath,0"
-$Shortcut.Save()
-$Changes++
-Record-OK "Start-menu shortcut" $ShortcutPath
+$ShortcutIsCurrent = (
+    (Test-Path -LiteralPath $ShortcutPath -PathType Leaf) -and
+    $Shortcut.TargetPath -eq $PwshPath -and
+    $Shortcut.Arguments -eq "-NoLogo" -and
+    $Shortcut.WorkingDirectory -eq $ProjectsPath -and
+    $Shortcut.Description -eq "Open $($Schema.name)"
+)
+
+if ($ShortcutIsCurrent) {
+    Record-OK "Start-menu shortcut" "already configured"
+}
+elseif ($DryRun) {
+    Record-OK "Start-menu shortcut" "would create or refresh $ShortcutPath"
+    $Changes++
+}
+else {
+    New-Item -ItemType Directory -Force -Path $ShortcutDirectory | Out-Null
+    $Shortcut.TargetPath = $PwshPath
+    $Shortcut.Arguments = "-NoLogo"
+    $Shortcut.WorkingDirectory = $ProjectsPath
+    $Shortcut.Description = "Open $($Schema.name)"
+    $Shortcut.IconLocation = "$PwshPath,0"
+    $Shortcut.Save()
+    $Changes++
+    Record-OK "Start-menu shortcut" $ShortcutPath
+}
 
 Write-Section "Profile Validation"
 
+if ($DryRun -and $UpdatedProfile -ne $ExistingProfile) {
+    Record-OK "Profile load test" "deferred until planned profile is written"
+}
+else {
 $ValidationOutput = & $PwshPath -NoLogo -NoProfile -Command "& { . '$($ProfilePath.Replace("'", "''"))'; 'PROFILE_OK' }" 2>&1
 
 if ($LASTEXITCODE -eq 0 -and $ValidationOutput -contains "PROFILE_OK") {
@@ -195,9 +236,10 @@ if ($LASTEXITCODE -eq 0 -and $ValidationOutput -contains "PROFILE_OK") {
 else {
     Record-Fail "Profile load test" ($ValidationOutput -join " ")
 }
+}
 
 Write-Section "PowerShell Result"
-Write-InfoLine "Changes applied" $Changes.ToString()
+Write-InfoLine $(if ($DryRun) { "Changes planned" } else { "Changes applied" }) $Changes.ToString()
 Write-InfoLine "Warnings" $Warnings.ToString()
 Write-InfoLine "Failures" $Failures.ToString()
 
@@ -208,8 +250,8 @@ else {
     Write-Fail "Overall status" "INCOMPLETE"
 }
 
-Write-InfoLine "Report" $Report
-Write-InfoLine "Backup" $BackupRoot
+if ($Report) { Write-InfoLine "Report" $Report } else { Write-InfoLine "Report" "suppressed in dry-run mode" }
+Write-InfoLine "Backup" $(if ($DryRun) { "suppressed in dry-run mode" } else { $BackupRoot })
 Add-ReportLine ""
 Add-ReportLine "Changes applied: $Changes"
 Add-ReportLine "Warnings: $Warnings"

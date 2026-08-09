@@ -13,21 +13,17 @@ section() {
 
 success() {
     SUCCESSES+=("$*")
-    printf '[ OK ] %s\n' "$*"
+    echo "SUCCESS: $*"
 }
 
 warning() {
     WARNINGS+=("$*")
-    printf '[WARN] %s\n' "$*" >&2
+    echo "WARNING: $*" >&2
 }
 
 failure() {
     FAILURES+=("$*")
-    printf '[FAIL] %s\n' "$*" >&2
-}
-
-info() {
-    printf '[INFO] %s\n' "$*"
+    echo "FAILED: $*" >&2
 }
 
 run_step() {
@@ -47,17 +43,13 @@ run_step() {
 }
 
 show_header() {
-    local os_name="Linux"
-    [[ -r /etc/os-release ]] && os_name="$(. /etc/os-release; printf '%s' "${PRETTY_NAME:-Linux}")"
+    section "LinuxBook Bootstrap v2"
 
-    section "Linux Bootstrap"
-    printf 'Mode:       %s\n' "$MODE"
-    printf 'User:       %s\n' "$(id -un)"
-    printf 'Computer:   %s\n' "$(hostname)"
-    printf 'System:     %s\n' "$os_name"
-    printf 'Shell:      Bash %s\n' "$BASH_VERSION"
-    printf 'Started:    %s\n' "$(date)"
-    printf 'Log file:   %s\n' "$LOG_FILE"
+    echo "Host:       $(hostname)"
+    echo "User:       $USER"
+    echo "Mode:       $MODE"
+    echo "Started:    $(date)"
+    echo "Log file:   $LOG_FILE"
 }
 
 require_debian() {

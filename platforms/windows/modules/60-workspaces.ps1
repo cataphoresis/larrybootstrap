@@ -1,4 +1,4 @@
-param()
+param([switch]$DryRun)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -10,7 +10,7 @@ $SchemaPath = Join-Path $Root "schema\workspaces.json"
 $Schema = Get-Content -LiteralPath $SchemaPath -Raw | ConvertFrom-Json
 $Timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
 $BackupRoot = Join-Path $Root "backups\workspaces-$Timestamp"
-$Report = New-TimestampedReport -RootDirectory $Root -Prefix "workspaces"
+$Report = New-TimestampedReport -RootDirectory $Root -Prefix "workspaces" -DryRun:$DryRun
 $PowerToysRoot = Join-Path $env:LOCALAPPDATA "Microsoft\PowerToys"
 $SettingsPath = Join-Path $PowerToysRoot "settings.json"
 $ExportPath = Join-Path $Root "profiles\powertoys"
@@ -18,11 +18,13 @@ $Failures = 0
 $Warnings = 0
 $Changes = 0
 
-New-Item -ItemType Directory -Force -Path $BackupRoot, $ExportPath | Out-Null
+if (-not $DryRun -and -not (Test-Path -LiteralPath $ExportPath -PathType Container)) {
+    New-Item -ItemType Directory -Force -Path $ExportPath | Out-Null
+}
 
 function Add-ReportLine {
     param([AllowEmptyString()][string]$Text)
-    $Text | Add-Content -Encoding UTF8 $Report
+    if ($Report) { $Text | Add-Content -Encoding UTF8 $Report }
 }
 
 function Record-OK {
@@ -45,11 +47,11 @@ function Record-Fail {
     Add-ReportLine ("[FAIL] {0,-28} {1}" -f $Label, $Message)
 }
 
-"Windows PowerToys Workspace Configuration" | Set-Content -Encoding UTF8 $Report
-"=========================================" | Add-Content $Report
-"Run date: $(Get-Date)" | Add-Content $Report
-"Schema: $SchemaPath" | Add-Content $Report
-"" | Add-Content $Report
+Add-ReportLine "Windows PowerToys Workspace Configuration"
+Add-ReportLine "========================================="
+Add-ReportLine "Run date: $(Get-Date)"
+Add-ReportLine "Schema: $SchemaPath"
+Add-ReportLine ""
 
 Write-Section "PowerToys Configuration"
 
@@ -64,9 +66,6 @@ if (-not (Test-Path -LiteralPath $SettingsPath -PathType Leaf)) {
     Record-Fail "PowerToys settings" "not found: $SettingsPath; open PowerToys once and rerun"
     exit 1
 }
-
-Copy-Item -LiteralPath $SettingsPath -Destination (Join-Path $BackupRoot "settings.json") -Force
-Record-OK "Settings backup" $BackupRoot
 
 $Settings = Get-Content -LiteralPath $SettingsPath -Raw | ConvertFrom-Json -AsHashtable
 
@@ -83,34 +82,42 @@ foreach ($Module in $Schema.requiredModules) {
     else {
         $Settings["enabled"][$Name] = $true
         $Changes++
-        Record-OK $Name "enabled"
+        Record-OK $Name $(if ($DryRun) { "would enable" } else { "enabled" })
     }
 }
 
 $UpdatedSettings = $Settings | ConvertTo-Json -Depth 20 -Compress
 $ExistingSettings = (Get-Content -LiteralPath $SettingsPath -Raw | ConvertFrom-Json -AsHashtable) | ConvertTo-Json -Depth 20 -Compress
 
-if ($UpdatedSettings -ne $ExistingSettings) {
+if ($UpdatedSettings -ne $ExistingSettings -and -not $DryRun) {
+    New-Item -ItemType Directory -Force -Path $BackupRoot | Out-Null
+    Copy-Item -LiteralPath $SettingsPath -Destination (Join-Path $BackupRoot "settings.json") -Force
+    Record-OK "Settings backup" $BackupRoot
     Set-Content -LiteralPath $SettingsPath -Value $UpdatedSettings -Encoding UTF8
 }
 
 Write-Section "Workspace Definitions"
-Record-OK "Export directory" $ExportPath
+if (Test-Path -LiteralPath $ExportPath -PathType Container) {
+    Record-OK "Export directory" $ExportPath
+}
+elseif ($DryRun) {
+    Record-OK "Export directory" "would create $ExportPath"
+}
 
 foreach ($Layout in $Schema.layouts) {
     Record-Warn $Layout.name "capture pending: $($Layout.purpose)"
 }
 
 Write-Section "Workspace Result"
-Write-InfoLine "Changes applied" $Changes.ToString()
+Write-InfoLine $(if ($DryRun) { "Changes planned" } else { "Changes applied" }) $Changes.ToString()
 Write-InfoLine "Warnings" $Warnings.ToString()
 Write-InfoLine "Failures" $Failures.ToString()
 
 $Status = if ($Failures -eq 0) { "PASS" } else { "INCOMPLETE" }
 if ($Failures -eq 0) { Write-OK "Overall status" $Status } else { Write-Fail "Overall status" $Status }
 
-Write-InfoLine "Report" $Report
-Write-InfoLine "Backup" $BackupRoot
+if ($Report) { Write-InfoLine "Report" $Report } else { Write-InfoLine "Report" "suppressed in dry-run mode" }
+Write-InfoLine "Backup" $(if ($DryRun) { "suppressed in dry-run mode" } else { $BackupRoot })
 Add-ReportLine ""
 Add-ReportLine "Changes applied: $Changes"
 Add-ReportLine "Warnings: $Warnings"

@@ -1,5 +1,79 @@
 Set-StrictMode -Version Latest
 
+# LarryBootstrap's cross-platform terminal presentation contract is 72 columns.
+# This stays within a conventional 80-column terminal while leaving enough room
+# for Windows paths and a fixed right-side status column.
+$script:LarryPanelWidth = 72
+$script:LarryPanelInnerWidth = $script:LarryPanelWidth - 4
+
+function Split-LarryText {
+    param(
+        [AllowEmptyString()][string]$Text,
+        [Parameter(Mandatory)][int]$Width
+    )
+
+    $Remaining = $Text.Trim()
+    if ($Remaining.Length -eq 0) { return ,"" }
+
+    $Lines = [Collections.Generic.List[string]]::new()
+    while ($Remaining.Length -gt $Width) {
+        $Candidate = $Remaining.Substring(0, $Width)
+        $BreakAt = $Candidate.LastIndexOf(" ")
+        if ($BreakAt -lt [math]::Floor($Width / 2)) {
+            $SeparatorAt = [math]::Max(
+                [math]::Max($Candidate.LastIndexOf("\"), $Candidate.LastIndexOf("/")),
+                $Candidate.LastIndexOf("-")
+            )
+            if ($SeparatorAt -ge [math]::Floor($Width / 2)) {
+                $BreakAt = $SeparatorAt + 1
+            }
+            else {
+                $BreakAt = $Width
+            }
+        }
+        $Lines.Add($Remaining.Substring(0, $BreakAt).TrimEnd())
+        $Remaining = $Remaining.Substring($BreakAt).TrimStart()
+    }
+    $Lines.Add($Remaining)
+    return $Lines.ToArray()
+}
+
+function Write-LarryBorder {
+    Write-Host ("+" + ("-" * ($script:LarryPanelWidth - 2)) + "+") -ForegroundColor DarkCyan
+}
+
+function Write-LarryPanelLine {
+    param(
+        [AllowEmptyString()][string]$Text,
+        [string]$Status = "",
+        [ConsoleColor]$StatusColor = [ConsoleColor]::Gray
+    )
+
+    $StatusWidth = 6
+    $BodyWidth = $script:LarryPanelInnerWidth - $StatusWidth - 1
+    $Lines = @(Split-LarryText -Text $Text -Width $BodyWidth)
+
+    for ($Index = 0; $Index -lt $Lines.Count; $Index++) {
+        $Marker = if ($Index -eq 0) { $Status } else { "" }
+        Write-Host "| " -ForegroundColor DarkCyan -NoNewline
+        Write-Host ("{0,-$BodyWidth}" -f $Lines[$Index]) -NoNewline
+        Write-Host " " -NoNewline
+        Write-Host ("{0,$StatusWidth}" -f $Marker) -ForegroundColor $StatusColor -NoNewline
+        Write-Host " |" -ForegroundColor DarkCyan
+    }
+}
+
+function Write-LarryStatus {
+    param(
+        [Parameter(Mandatory)][string]$Label,
+        [Parameter(Mandatory)][string]$Message,
+        [Parameter(Mandatory)][string]$Status,
+        [Parameter(Mandatory)][ConsoleColor]$Color
+    )
+
+    Write-LarryPanelLine -Text ("{0}  {1}" -f $Label, $Message) -Status $Status -StatusColor $Color
+}
+
 function Write-Section {
     param(
         [Parameter(Mandatory)]
@@ -7,8 +81,13 @@ function Write-Section {
     )
 
     Write-Host ""
-    Write-Host $Title -ForegroundColor Cyan
-    Write-Host ("=" * $Title.Length) -ForegroundColor DarkCyan
+    Write-LarryBorder
+    foreach ($Line in @(Split-LarryText -Text $Title -Width $script:LarryPanelInnerWidth)) {
+        Write-Host "| " -ForegroundColor DarkCyan -NoNewline
+        Write-Host ("{0,-$($script:LarryPanelInnerWidth)}" -f $Line) -ForegroundColor Cyan -NoNewline
+        Write-Host " |" -ForegroundColor DarkCyan
+    }
+    Write-LarryBorder
 }
 
 function Write-OK {
@@ -20,8 +99,7 @@ function Write-OK {
         [string]$Message
     )
 
-    Write-Host "[ OK ] " -ForegroundColor Green -NoNewline
-    Write-Host ("{0,-28} {1}" -f $Label, $Message)
+    Write-LarryStatus -Label $Label -Message $Message -Status "[ OK ]" -Color Green
 }
 
 function Write-Warn {
@@ -33,8 +111,7 @@ function Write-Warn {
         [string]$Message
     )
 
-    Write-Host "[WARN] " -ForegroundColor Yellow -NoNewline
-    Write-Host ("{0,-28} {1}" -f $Label, $Message)
+    Write-LarryStatus -Label $Label -Message $Message -Status "[WARN]" -Color Yellow
 }
 
 function Write-Fail {
@@ -46,8 +123,7 @@ function Write-Fail {
         [string]$Message
     )
 
-    Write-Host "[FAIL] " -ForegroundColor Red -NoNewline
-    Write-Host ("{0,-28} {1}" -f $Label, $Message)
+    Write-LarryStatus -Label $Label -Message $Message -Status "[FAIL]" -Color Red
 }
 
 function Write-InfoLine {
@@ -59,8 +135,7 @@ function Write-InfoLine {
         [string]$Message
     )
 
-    Write-Host "[INFO] " -ForegroundColor Blue -NoNewline
-    Write-Host ("{0,-28} {1}" -f $Label, $Message)
+    Write-LarryStatus -Label $Label -Message $Message -Status "[INFO]" -Color Blue
 }
 
 function Test-IsAdministrator {
@@ -114,8 +189,14 @@ function New-TimestampedReport {
         [string]$RootDirectory,
 
         [Parameter(Mandatory)]
-        [string]$Prefix
+        [string]$Prefix,
+
+        [switch]$DryRun
     )
+
+    if ($DryRun) {
+        return $null
+    }
 
     $reportDirectory = Join-Path $RootDirectory "reports"
     New-Item -ItemType Directory -Force $reportDirectory | Out-Null
@@ -134,8 +215,14 @@ function Invoke-BootstrapArtifactRetention {
         [string]$RootDirectory,
 
         [ValidateRange(1, 100)]
-        [int]$KeepPerModule = 3
+        [int]$KeepPerModule = 3,
+
+        [switch]$DryRun
     )
+
+    if ($DryRun) {
+        return
+    }
 
     $TimestampPattern =
         '^(?<Prefix>.+)-\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$'
@@ -306,13 +393,20 @@ function Install-WinGetPackage {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
-        [pscustomobject]$Package
+        [pscustomobject]$Package,
+
+        [switch]$DryRun
     )
 
     if (Test-WinGetPackageInstalled $Package.Id) {
 
         Write-OK $Package.DisplayName "already installed"
 
+        return $true
+    }
+
+    if ($DryRun) {
+        Write-InfoLine $Package.DisplayName "would install ($($Package.Id))"
         return $true
     }
 

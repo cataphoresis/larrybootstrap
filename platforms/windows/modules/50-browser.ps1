@@ -1,4 +1,4 @@
-param()
+param([switch]$DryRun)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
@@ -10,16 +10,14 @@ $SchemaPath = Join-Path $Root "schema\browser.json"
 $Schema = Get-Content -LiteralPath $SchemaPath -Raw | ConvertFrom-Json
 $Timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
 $BackupRoot = Join-Path $Root "backups\browser-$Timestamp"
-$Report = New-TimestampedReport -RootDirectory $Root -Prefix "browser"
+$Report = New-TimestampedReport -RootDirectory $Root -Prefix "browser" -DryRun:$DryRun
 $Failures = 0
 $Warnings = 0
 $Changes = 0
 
-New-Item -ItemType Directory -Force -Path $BackupRoot | Out-Null
-
 function Add-ReportLine {
     param([AllowEmptyString()][string]$Text)
-    $Text | Add-Content -Encoding UTF8 $Report
+    if ($Report) { $Text | Add-Content -Encoding UTF8 $Report }
 }
 
 function Record-OK {
@@ -42,11 +40,11 @@ function Record-Fail {
     Add-ReportLine ("[FAIL] {0,-28} {1}" -f $Label, $Message)
 }
 
-"Windows Browser Configuration" | Set-Content -Encoding UTF8 $Report
-"=============================" | Add-Content $Report
-"Run date: $(Get-Date)" | Add-Content $Report
-"Schema: $SchemaPath" | Add-Content $Report
-"" | Add-Content $Report
+Add-ReportLine "Windows Browser Configuration"
+Add-ReportLine "============================="
+Add-ReportLine "Run date: $(Get-Date)"
+Add-ReportLine "Schema: $SchemaPath"
+Add-ReportLine ""
 
 Write-Section "Browser Availability"
 
@@ -73,11 +71,9 @@ Write-Section "Firefox Enterprise Policy"
 $FirefoxRoot = Split-Path -Parent $FirefoxPath
 $DistributionPath = Join-Path $FirefoxRoot "distribution"
 $PolicyPath = Join-Path $DistributionPath "policies.json"
-New-Item -ItemType Directory -Force -Path $DistributionPath | Out-Null
+if (-not $DryRun) { New-Item -ItemType Directory -Force -Path $DistributionPath | Out-Null }
 
 $Policy = if (Test-Path -LiteralPath $PolicyPath -PathType Leaf) {
-    Copy-Item -LiteralPath $PolicyPath -Destination (Join-Path $BackupRoot "policies.json") -Force
-    Record-OK "Policy backup" $BackupRoot
     Get-Content -LiteralPath $PolicyPath -Raw | ConvertFrom-Json -AsHashtable
 }
 else {
@@ -102,9 +98,19 @@ else {
 }
 
 if ($UpdatedPolicy -ne $ExistingPolicy) {
-    Set-Content -LiteralPath $PolicyPath -Value $UpdatedPolicy -Encoding UTF8
     $Changes++
-    Record-OK "Firefox policy" "updated $PolicyPath"
+    if ($DryRun) {
+        Record-OK "Firefox policy" "would update $PolicyPath"
+    }
+    else {
+        New-Item -ItemType Directory -Force -Path $BackupRoot | Out-Null
+        if (Test-Path -LiteralPath $PolicyPath -PathType Leaf) {
+            Copy-Item -LiteralPath $PolicyPath -Destination (Join-Path $BackupRoot "policies.json") -Force
+            Record-OK "Policy backup" $BackupRoot
+        }
+        Set-Content -LiteralPath $PolicyPath -Value $UpdatedPolicy -Encoding UTF8
+        Record-OK "Firefox policy" "updated $PolicyPath"
+    }
 }
 else {
     Record-OK "Firefox policy" "already configured"
@@ -127,15 +133,15 @@ else {
 }
 
 Write-Section "Browser Result"
-Write-InfoLine "Changes applied" $Changes.ToString()
+Write-InfoLine $(if ($DryRun) { "Changes planned" } else { "Changes applied" }) $Changes.ToString()
 Write-InfoLine "Warnings" $Warnings.ToString()
 Write-InfoLine "Failures" $Failures.ToString()
 
 $Status = if ($Failures -eq 0) { "PASS" } else { "INCOMPLETE" }
 if ($Failures -eq 0) { Write-OK "Overall status" $Status } else { Write-Fail "Overall status" $Status }
 
-Write-InfoLine "Report" $Report
-Write-InfoLine "Backup" $BackupRoot
+if ($Report) { Write-InfoLine "Report" $Report } else { Write-InfoLine "Report" "suppressed in dry-run mode" }
+Write-InfoLine "Backup" $(if ($DryRun) { "suppressed in dry-run mode" } else { $BackupRoot })
 Add-ReportLine ""
 Add-ReportLine "Changes applied: $Changes"
 Add-ReportLine "Warnings: $Warnings"

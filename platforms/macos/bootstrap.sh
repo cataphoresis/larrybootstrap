@@ -3,8 +3,13 @@
 set -Eeuo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=modules/common.sh
+source "$ROOT_DIR/modules/common.sh"
+
 PROFILE="standard"
 VERIFY_ONLY=false
+MACBOOK_DRY_RUN="${MACBOOK_DRY_RUN:-0}"
 
 usage() {
     cat <<USAGE
@@ -12,14 +17,15 @@ Usage:
   ./bootstrap.sh [options]
 
 Options:
-  --profile NAME   Package profile: minimal, standard, homelab, developer
+  --profile NAME   Package profile: minimal, standard, developer
                    Default: standard
   --verify-only    Run only the verification module
+  --dry-run        Inspect and report without changing machine state
   -h, --help       Show this help
 
 Examples:
   ./bootstrap.sh
-  ./bootstrap.sh --profile homelab
+  ./bootstrap.sh --profile developer
   ./bootstrap.sh --verify-only
 USAGE
 }
@@ -28,7 +34,7 @@ while (( $# > 0 )); do
     case "$1" in
         --profile)
             [[ $# -ge 2 ]] || {
-                echo "ERROR: --profile requires a value." >&2
+                larry_fail "--profile requires a value."
                 exit 1
             }
 
@@ -41,13 +47,18 @@ while (( $# > 0 )); do
             shift
             ;;
 
+        --dry-run)
+            MACBOOK_DRY_RUN=1
+            shift
+            ;;
+
         -h|--help)
             usage
             exit 0
             ;;
 
         *)
-            echo "ERROR: Unknown option: $1" >&2
+            larry_fail "Unknown option: $1"
             usage
             exit 1
             ;;
@@ -57,7 +68,7 @@ done
 PROFILE_FILE="$ROOT_DIR/profiles/$PROFILE.conf"
 
 if [[ "$VERIFY_ONLY" == false && ! -f "$PROFILE_FILE" ]]; then
-    echo "ERROR: Unknown profile: $PROFILE" >&2
+    larry_fail "Unknown profile: $PROFILE"
     echo
     echo "Available profiles:"
 
@@ -77,30 +88,24 @@ run_module() {
     local path="$ROOT_DIR/modules/$module"
 
     if [[ ! -x "$path" ]]; then
-        echo "ERROR: Missing or non-executable module: $path" >&2
+        larry_fail "Missing or non-executable module: $path"
         exit 1
     fi
 
-    printf '\n============================================================\n'
-    printf ' Running %s\n' "$module"
-    printf '============================================================\n'
+    larry_section "Running $module"
 
-    "$path"
+    MACBOOK_DRY_RUN="$MACBOOK_DRY_RUN" "$path"
 }
 
-show_banner() {
-    printf '\n============================================================\n'
-    printf ' macOS Bootstrap\n'
-    printf '============================================================\n'
-    printf 'Profile:    %s\n' "$PROFILE"
-    printf 'User:       %s\n' "$(id -un)"
-    printf 'Computer:   %s\n' "$(hostname -s)"
-    printf 'System:     macOS %s\n' "$(sw_vers -productVersion)"
-    printf 'Shell:      Bash %s\n' "$BASH_VERSION"
-    printf 'Started:    %s\n' "$(date)"
-}
+larry_section "MacBook Bootstrap"
 
-show_banner
+printf 'Profile: %s\n' "$PROFILE"
+printf 'User:    %s\n' "$(id -un)"
+printf 'Host:    %s\n' "$(scutil --get ComputerName 2>/dev/null || hostname)"
+printf 'macOS:   %s\n' "$(sw_vers -productVersion)"
+printf 'Arch:    %s\n' "$(uname -m)"
+printf 'Started: %s\n' "$(date)"
+[[ "$MACBOOK_DRY_RUN" == "1" ]] && printf 'Mode:    DRY RUN — no machine-state changes\n'
 
 if [[ "$VERIFY_ONLY" == true ]]; then
     run_module "90-verify.sh"
@@ -113,6 +118,8 @@ MODULES=(
     "00-preflight.sh"
     "01-inventory.sh"
     "10-homebrew.sh"
+    "12-cleanup.sh"
+    "15-compat-tools.sh"
     "20-defaults.sh"
     "25-filezilla.sh"
     "90-verify.sh"
@@ -122,9 +129,9 @@ for module in "${MODULES[@]}"; do
     run_module "$module"
 done
 
-printf '\n============================================================\n'
-printf ' Bootstrap complete\n'
-printf '============================================================\n'
-printf 'Profile:  %s\n' "$PROFILE"
-printf 'Finished: %s\n' "$(date)"
-printf 'Reports:  %s\n' "$ROOT_DIR/reports"
+larry_section "Bootstrap complete"
+
+larry_ok "Bootstrap sequence completed"
+larry_info "Profile:  $PROFILE"
+larry_info "Finished: $(date)"
+larry_info "Reports:  $ROOT_DIR/reports"

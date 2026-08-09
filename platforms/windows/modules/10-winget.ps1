@@ -1,6 +1,8 @@
 param(
     [ValidateSet("standard")]
-    [string]$Profile = "standard"
+    [string]$Profile = "standard",
+
+    [switch]$DryRun
 )
 
 Set-StrictMode -Version Latest
@@ -15,7 +17,8 @@ $ManifestPath = Join-Path `
 
 $Report = New-TimestampedReport `
     -RootDirectory $Root `
-    -Prefix "winget"
+    -Prefix "winget" `
+    -DryRun:$DryRun
 
 $Installed = 0
 $Present = 0
@@ -28,25 +31,15 @@ function Add-ReportLine {
         [string]$Text
     )
 
-    $Text | Add-Content -Encoding UTF8 $Report
+    if ($Report) { $Text | Add-Content -Encoding UTF8 $Report }
 }
 
-"Windows Bootstrap WinGet Installation" |
-    Set-Content -Encoding UTF8 $Report
-
-"=======================================" |
-    Add-Content $Report
-
-"Run date: $(Get-Date)" |
-    Add-Content $Report
-
-"Profile: $Profile" |
-    Add-Content $Report
-
-"Manifest: $ManifestPath" |
-    Add-Content $Report
-
-"" | Add-Content $Report
+Add-ReportLine "Windows Bootstrap WinGet Installation"
+Add-ReportLine "======================================="
+Add-ReportLine "Run date: $(Get-Date)"
+Add-ReportLine "Profile: $Profile"
+Add-ReportLine "Manifest: $ManifestPath"
+Add-ReportLine ""
 
 Write-Section "Windows Package Installation"
 
@@ -80,27 +73,32 @@ Add-ReportLine "Manifest entries: $($Packages.Count)"
 
 Write-Section "Refreshing WinGet Sources"
 
-try {
-    winget source update --disable-interactivity
+if ($DryRun) {
+    Write-InfoLine "WinGet sources" "would refresh; skipped in dry-run mode"
+}
+else {
+    try {
+        winget source update --disable-interactivity
 
-    if ($LASTEXITCODE -eq 0) {
-        Write-OK "WinGet sources" "updated"
-        Add-ReportLine "[ OK ] WinGet sources updated"
+        if ($LASTEXITCODE -eq 0) {
+            Write-OK "WinGet sources" "updated"
+            Add-ReportLine "[ OK ] WinGet sources updated"
+        }
+        else {
+            Write-Warn "WinGet sources" `
+                "update returned code $LASTEXITCODE; continuing"
+
+            Add-ReportLine `
+                "[WARN] WinGet source update returned code $LASTEXITCODE"
+        }
     }
-    else {
+    catch {
         Write-Warn "WinGet sources" `
-            "update returned code $LASTEXITCODE; continuing"
+            "update failed; continuing with current metadata"
 
         Add-ReportLine `
-            "[WARN] WinGet source update returned code $LASTEXITCODE"
+            "[WARN] WinGet source update failed: $($_.Exception.Message)"
     }
-}
-catch {
-    Write-Warn "WinGet sources" `
-        "update failed; continuing with current metadata"
-
-    Add-ReportLine `
-        "[WARN] WinGet source update failed: $($_.Exception.Message)"
 }
 
 Write-Section "Applications"
@@ -122,7 +120,7 @@ foreach ($Package in $Packages) {
         continue
     }
 
-    $Result = Install-WinGetPackage -Package $Package
+    $Result = Install-WinGetPackage -Package $Package -DryRun:$DryRun
 
     if ($Result) {
         Add-ReportLine (
@@ -155,50 +153,10 @@ foreach ($Package in $Packages) {
     }
 }
 
-Write-Section "Python Tooling"
-
-$PythonExecutable = Get-ChildItem `
-    -LiteralPath (Join-Path $env:LOCALAPPDATA "Programs\Python") `
-    -Filter "python.exe" `
-    -File `
-    -Recurse `
-    -ErrorAction SilentlyContinue |
-    Sort-Object FullName -Descending |
-    Select-Object -First 1
-
-if (-not $PythonExecutable) {
-    Write-Fail "Python tooling" "python.exe was not found after package installation"
-    Add-ReportLine "[FAIL] Python tooling              python.exe was not found"
-    $RequiredFailures++
-}
-else {
-    & $PythonExecutable.FullName -m ensurepip --upgrade | Out-Host
-
-    if ($LASTEXITCODE -ne 0) {
-        Write-Fail "Python pip" "ensurepip failed"
-        Add-ReportLine "[FAIL] Python pip                  ensurepip failed"
-        $RequiredFailures++
-    }
-    else {
-        $PythonRoot = Split-Path -Parent $PythonExecutable.FullName
-        $PythonScripts = Join-Path $PythonRoot "Scripts"
-        $UserPath = [Environment]::GetEnvironmentVariable("Path", "User")
-        $PathEntries = @($PythonRoot, $PythonScripts) + @(
-            $UserPath -split ";" | Where-Object { $_ }
-        )
-        $UpdatedPath = ($PathEntries | Select-Object -Unique) -join ";"
-        [Environment]::SetEnvironmentVariable("Path", $UpdatedPath, "User")
-
-        $PipVersion = & $PythonExecutable.FullName -m pip --version
-        Write-OK "Python tooling" $PipVersion
-        Add-ReportLine "[ OK ] Python tooling              $PipVersion"
-    }
-}
-
 Write-Section "WinGet Result"
 
 Write-InfoLine "Already present" $Present.ToString()
-Write-InfoLine "Newly installed" $Installed.ToString()
+Write-InfoLine $(if ($DryRun) { "Would install" } else { "Newly installed" }) $Installed.ToString()
 Write-InfoLine "Optional failures" $OptionalFailures.ToString()
 Write-InfoLine "Required failures" $RequiredFailures.ToString()
 
@@ -217,7 +175,7 @@ else {
     Add-ReportLine "Overall status: INCOMPLETE"
 }
 
-Write-InfoLine "Report" $Report
+if ($Report) { Write-InfoLine "Report" $Report } else { Write-InfoLine "Report" "suppressed in dry-run mode" }
 Add-ReportLine "Report: $Report"
 
 if ($RequiredFailures -gt 0) {

@@ -9,6 +9,7 @@ operating system while shared profiles describe portable workstation intent.
 ```text
 common/
   profiles/            Shared application and workstation intent
+  platform-baselines.json  Golden standalone source revisions
 platforms/
   windows/             PowerShell and WinGet implementation
   linux/               Bash, APT, and Flatpak implementation
@@ -56,6 +57,7 @@ Windows, from PowerShell 7:
 ```powershell
 .\bootstrap.ps1 -Profile standard
 .\bootstrap.ps1 -Profile standard -VerifyOnly
+.\bootstrap.ps1 -Profile standard -DryRun
 ```
 
 macOS:
@@ -72,27 +74,23 @@ Linux:
 ./bootstrap.sh audit
 ```
 
-The root launchers detect or enforce the current platform and delegate to the
-corresponding native bootstrap. Platform-specific READMEs document additional
-profiles, behavior, and recovery details.
+The root launchers detect or enforce the current platform and delegate every
+option to the corresponding native bootstrap. Platform-specific READMEs
+document additional profiles, behavior, and recovery details.
 
-Python is a baseline tool on every platform. Windows installs Python 3.13 and
-verifies pip through `python -m pip`; Debian/Linux installs `python3`,
-`python3-pip`, `python3-venv`, and `pipx`; macOS installs Homebrew Python and
-verifies pip through `python3 -m pip`. Project dependencies should use a virtual
-environment instead of modifying the operating system's Python environment.
-
-GitHub CLI (`gh`) is also a baseline tool on Windows, Debian/Linux, and macOS
-so every bootstrap can authenticate, clone, inspect, and manage Larry ecosystem
-repositories through the same command surface.
+Cross-platform application intent is reconciled deliberately after native
+platform behavior is imported and verified. The revisions recorded in
+`common/platform-baselines.json` are the source-of-truth checkpoints for this
+integration milestone.
 
 ## Terminal style
 
 LarryBootstrap uses an intentionally retro BBS-inspired terminal style on all
 three operating systems. Main commands open with an ASCII banner and consistent
 profile, user, computer, system, shell, and start-time details. Status output
-uses `[ OK ]`, `[WARN]`, `[FAIL]`, and `[INFO]` markers. Any future animation
-must be lightweight, terminal-only, and automatically disabled for redirected
+uses `[ OK ]`, `[WARN]`, `[FAIL]`, and `[INFO]` markers. The shared presentation
+contract is 72 columns, including redirected output. Any future animation must
+be lightweight, terminal-only, and automatically disabled for redirected
 output, logs, and unattended runs.
 
 ## Browser standard

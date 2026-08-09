@@ -1,3 +1,5 @@
+param([switch]$DryRun)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Continue"
 
@@ -8,7 +10,7 @@ $Timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
 $BackupRoot = Join-Path $Root "backups\inventory-$Timestamp"
 $Report = Join-Path $Root "reports\inventory-$Timestamp.txt"
 
-New-Item -ItemType Directory -Force -Path $BackupRoot | Out-Null
+if (-not $DryRun) { New-Item -ItemType Directory -Force -Path $BackupRoot | Out-Null }
 
 $Warnings = 0
 
@@ -18,7 +20,7 @@ function Add-ReportLine {
         [string]$Text
     )
 
-    $Text | Add-Content -Encoding UTF8 $Report
+    if (-not $DryRun) { $Text | Add-Content -Encoding UTF8 $Report }
 }
 
 function Save-Inventory {
@@ -36,11 +38,18 @@ function Save-Inventory {
     $Path = Join-Path $BackupRoot $FileName
 
     try {
-        & $Command |
-            Out-File -Encoding UTF8 -Width 4096 $Path
+        if ($DryRun) {
+            [void]@(& $Command)
+            Write-OK $Label "inspected; file output suppressed"
+            Add-ReportLine ("[ OK ] {0,-28} inspected" -f $Label)
+        }
+        else {
+            & $Command |
+                Out-File -Encoding UTF8 -Width 4096 $Path
 
-        Write-OK $Label $Path
-        Add-ReportLine ("[ OK ] {0,-28} {1}" -f $Label, $Path)
+            Write-OK $Label $Path
+            Add-ReportLine ("[ OK ] {0,-28} {1}" -f $Label, $Path)
+        }
     }
     catch {
         $script:Warnings++
@@ -49,16 +58,16 @@ function Save-Inventory {
     }
 }
 
-"Windows Bootstrap Inventory" | Set-Content -Encoding UTF8 $Report
-"===========================" | Add-Content $Report
-"Run date: $(Get-Date)" | Add-Content $Report
-"Computer: $env:COMPUTERNAME" | Add-Content $Report
-"User: $env:USERNAME" | Add-Content $Report
-"Backup: $BackupRoot" | Add-Content $Report
-"" | Add-Content $Report
+Add-ReportLine "Windows Bootstrap Inventory"
+Add-ReportLine "==========================="
+Add-ReportLine "Run date: $(Get-Date)"
+Add-ReportLine "Computer: $env:COMPUTERNAME"
+Add-ReportLine "User: $env:USERNAME"
+Add-ReportLine "Backup: $BackupRoot"
+Add-ReportLine ""
 
 Write-Section "Windows Bootstrap Inventory"
-Write-InfoLine "Backup directory" $BackupRoot
+Write-InfoLine "Backup directory" $(if ($DryRun) { "suppressed in dry-run mode" } else { $BackupRoot })
 
 Write-Section "System"
 

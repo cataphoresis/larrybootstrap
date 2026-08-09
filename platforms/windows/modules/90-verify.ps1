@@ -1,6 +1,8 @@
 param(
     [ValidateSet("standard")]
-    [string]$Profile = "standard"
+    [string]$Profile = "standard",
+
+    [switch]$DryRun
 )
 
 Set-StrictMode -Version Latest
@@ -12,14 +14,14 @@ $Root = Split-Path -Parent $PSScriptRoot
 $PackageManifestPath = Join-Path $Root "profiles\packages-$Profile.txt"
 $DirectManifestPath = Join-Path $Root "profiles\direct-installs-$Profile.json"
 $PowerShellSchemaPath = Join-Path $Root "schema\powershell.json"
-$Report = New-TimestampedReport -RootDirectory $Root -Prefix "verify"
+$Report = New-TimestampedReport -RootDirectory $Root -Prefix "verify" -DryRun:$DryRun
 $Failures = 0
 $Warnings = 0
 $Passed = 0
 
 function Add-ReportLine {
     param([AllowEmptyString()][string]$Text)
-    $Text | Add-Content -Encoding UTF8 $Report
+    if ($Report) { $Text | Add-Content -Encoding UTF8 $Report }
 }
 
 function Record-OK {
@@ -80,143 +82,23 @@ function Find-DirectApplication {
     return $null
 }
 
-function Get-CoreToolVersion {
-    param(
-        [Parameter(Mandatory)][string]$Name,
-        [Parameter(Mandatory)][System.Management.Automation.CommandInfo]$Command
-    )
-
-    $VersionText = switch ($Name) {
-        "pwsh" {
-            & $Command.Source -NoLogo -NoProfile -Command '$PSVersionTable.PSVersion.ToString()' 2>&1
-            break
-        }
-        "git" {
-            & $Command.Source --version 2>&1
-            break
-        }
-        "gh" {
-            (& $Command.Source --version 2>&1 | Select-Object -First 1)
-            break
-        }
-        "winget" {
-            # The alias can fail when its output is captured under PowerShell
-            # 7.6, so read the owning App Installer package version directly.
-            try {
-                $Package = Get-AppxPackage -Name Microsoft.DesktopAppInstaller -ErrorAction Stop |
-                    Sort-Object Version -Descending |
-                    Select-Object -First 1
-                if ($Package) {
-                    return "v$($Package.Version)"
-                }
-            }
-            catch {
-                # Some stripped-down environments cannot load the Appx module.
-            }
-
-            $PackageKeys = Get-ChildItem `
-                "HKCU:\Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Packages" `
-                -ErrorAction SilentlyContinue
-            foreach ($PackageKey in $PackageKeys) {
-                if ($PackageKey.PSChildName -match '^Microsoft\.DesktopAppInstaller_([^_]+)_') {
-                    return "v$($Matches[1])"
-                }
-            }
-
-            return $null
-        }
-    }
-
-    if ($LASTEXITCODE -ne 0 -or -not $VersionText) {
-        return $null
-    }
-
-    $Value = ([string]$VersionText).Trim()
-    $Value = $Value -replace '^git version\s+', ''
-    $Value = $Value -replace '^gh version\s+', ''
-    if ($Value -match '^(\S+)') {
-        $Value = $Matches[1]
-    }
-
-    if ($Value -notmatch '^v') {
-        $Value = "v$Value"
-    }
-
-    return $Value
-}
-
-function Resolve-CoreToolCommand {
-    param([Parameter(Mandatory)][string]$Name)
-
-    $Command = Get-Command $Name -ErrorAction SilentlyContinue
-    if ($Command -or $Name -ne "gh") {
-        return $Command
-    }
-
-    # A launcher started before WinGet installs GitHub CLI inherits the old PATH.
-    # Resolve the standard install locations so verification works immediately.
-    $Candidates = @(
-        (Join-Path $env:ProgramFiles "GitHub CLI\gh.exe"),
-        (Join-Path $env:LOCALAPPDATA "Programs\GitHub CLI\gh.exe")
-    )
-
-    foreach ($Candidate in $Candidates) {
-        if (Test-Path -LiteralPath $Candidate -PathType Leaf) {
-            return Get-Command $Candidate -ErrorAction SilentlyContinue
-        }
-    }
-
-    return $null
-}
-
-"Windows Bootstrap Verification" | Set-Content -Encoding UTF8 $Report
-"==============================" | Add-Content $Report
-"Run date: $(Get-Date)" | Add-Content $Report
-"Profile: $Profile" | Add-Content $Report
-"" | Add-Content $Report
+Add-ReportLine "Windows Bootstrap Verification"
+Add-ReportLine "=============================="
+Add-ReportLine "Run date: $(Get-Date)"
+Add-ReportLine "Profile: $Profile"
+Add-ReportLine ""
 
 Write-Section "Core Tools"
 
-foreach ($Tool in @("pwsh", "git", "gh", "winget")) {
-    $Command = Resolve-CoreToolCommand -Name $Tool
+foreach ($Tool in @("pwsh", "git", "winget")) {
+    $Command = Get-Command $Tool -ErrorAction SilentlyContinue
 
     if ($Command) {
-        $ToolVersion = Get-CoreToolVersion -Name $Tool -Command $Command
-        if ($ToolVersion) {
-            Record-OK $Tool $ToolVersion
-        }
-        else {
-            Record-Fail $Tool "version query failed"
-        }
+        Record-OK $Tool $Command.Source
     }
     else {
         Record-Fail $Tool "command not found"
     }
-}
-
-$Python = Get-Command python.exe -ErrorAction SilentlyContinue
-if ($Python -and $Python.Source -notlike "*\Microsoft\WindowsApps\python.exe") {
-    $PythonVersion = & $Python.Source --version 2>&1
-    $PythonVersion = ([string]$PythonVersion).Trim() -replace '^Python\s+', ''
-    Record-OK "Python" "v$PythonVersion"
-
-    $PipVersion = & $Python.Source -m pip --version 2>&1
-    if ($LASTEXITCODE -eq 0) {
-        $PipVersion = ([string]$PipVersion).Trim()
-        if ($PipVersion -match '^pip\s+(\S+)') {
-            Record-OK "pip" "v$($Matches[1])"
-        }
-        else {
-            Record-Fail "pip" "version output was not recognized"
-        }
-    }
-    else {
-        Record-Fail "pip" "python -m pip is unavailable"
-    }
-}
-else {
-    Record-Fail "Python" "python.exe is unavailable or resolves to the Microsoft Store placeholder"
-    Record-Fail "pip" "cannot be checked without Python"
 }
 
 Write-Section "WinGet Applications"
@@ -433,6 +315,63 @@ else {
     Record-Fail "Workspace exports" "not found: $WorkspaceExportPath"
 }
 
+Write-Section "Cleanup and Cross-OS Safety"
+
+$UninstallRegistryPaths = @(
+    "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*",
+    "HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*",
+    "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"
+)
+$ParsecComponents = @(
+    Get-ItemProperty $UninstallRegistryPaths -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.PSObject.Properties.Name -contains "DisplayName" -and
+            $_.PSObject.Properties.Name -contains "Publisher" -and
+            [string]$_.DisplayName -match '^Parsec($| )' -and
+            [string]$_.Publisher -match '^Parsec Cloud Inc\.?$'
+        }
+)
+
+if ($ParsecComponents.Count -eq 0) {
+    Record-OK "Parsec retirement" "no installed Parsec components"
+}
+else {
+    Record-Fail "Parsec retirement" "installed components remain: $($ParsecComponents.DisplayName -join ', ')"
+}
+
+$PowerPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Power"
+$HiberbootEnabled = Get-ItemPropertyValue -LiteralPath $PowerPath -Name "HiberbootEnabled" -ErrorAction SilentlyContinue
+if ($HiberbootEnabled -eq 0) {
+    Record-OK "Fast Startup" "disabled for safer cross-OS NTFS access"
+}
+else {
+    Record-Fail "Fast Startup" "expected HiberbootEnabled=0, found $HiberbootEnabled"
+}
+
+$PowerStateText = (powercfg.exe /availableSleepStates 2>&1) -join "`n"
+$AvailablePowerStateText = ($PowerStateText -split '(?im)^The following sleep states are not available')[0]
+$HibernateAvailable = $AvailablePowerStateText -match '(?im)^\s*Hibernate\s*$'
+if ($HibernateAvailable) {
+    Record-Warn "Hibernation" "available; use a full shutdown before switching operating systems"
+}
+else {
+    Record-OK "Hibernation" "not available"
+}
+
+$WslCommand = Get-Command wsl.exe -ErrorAction SilentlyContinue
+if (-not $WslCommand) {
+    Record-Warn "ext4 via WSL" "WSL is unavailable"
+}
+else {
+    $WslHelp = (& $WslCommand.Source --help 2>&1) -join "`n"
+    if ($WslHelp -match '--mount') {
+        Record-OK "ext4 via WSL" "wsl --mount capability is available"
+    }
+    else {
+        Record-Warn "ext4 via WSL" "current WSL does not expose wsl --mount"
+    }
+}
+
 Write-Section "Verification Result"
 Write-InfoLine "Passed" $Passed.ToString()
 Write-InfoLine "Warnings" $Warnings.ToString()
@@ -447,7 +386,7 @@ else {
     Write-Fail "Overall status" $Status
 }
 
-Write-InfoLine "Report" $Report
+if ($Report) { Write-InfoLine "Report" $Report } else { Write-InfoLine "Report" "suppressed in dry-run mode" }
 Add-ReportLine ""
 Add-ReportLine "Passed: $Passed"
 Add-ReportLine "Warnings: $Warnings"

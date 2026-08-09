@@ -11,10 +11,15 @@ Recreates the preferred macOS environment for this MacBook.
 - Produce verification and inventory reports
 - Remain safe to run repeatedly
 
+## Browser standard
+
+- Firefox is the managed primary browser.
+- Safari is the built-in secondary browser.
+- Chrome and Chromium are intentionally not installed by this bootstrap.
+
 ## Planned application set
 
 - Firefox
-- Safari (built in; secondary browser)
 - 1Password
 - Spotify
 - VLC

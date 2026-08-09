@@ -3,77 +3,180 @@
 set -uo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# shellcheck source=modules/common.sh
+source "$ROOT_DIR/modules/common.sh"
+
 REPORT_DIR="$ROOT_DIR/reports"
 TIMESTAMP="$(date '+%Y-%m-%d_%H-%M-%S')"
 REPORT_FILE="$REPORT_DIR/verify-$TIMESTAMP.txt"
+MACBOOK_DRY_RUN="${MACBOOK_DRY_RUN:-0}"
 
-mkdir -p "$REPORT_DIR"
+PROFILE="${MACBOOK_PROFILE:-standard}"
+PROFILE_FILE="$ROOT_DIR/profiles/$PROFILE.conf"
+
+if [[ "$MACBOOK_DRY_RUN" == "1" ]]; then
+    REPORT_FILE="/dev/null"
+else
+    mkdir -p "$REPORT_DIR"
+fi
 
 passes=0
 warnings=0
 failures=0
-
-log() {
-    printf '%-32s %s\n' "$1" "$2" | tee -a "$REPORT_FILE"
-}
+warning_guidance=()
+failure_guidance=()
 
 section() {
-    printf '\n%s\n%s\n' "$1" "$(printf '%*s' "${#1}" '' | tr ' ' '=')" \
-        | tee -a "$REPORT_FILE"
+    local title="$1"
+
+    larry_section "$title"
+
+    {
+        printf '\n%s\n' "$title"
+        printf '%*s\n' "${#title}" '' | tr ' ' '='
+    } >> "$REPORT_FILE"
+}
+
+report_status() {
+    local level="$1"
+    local label="$2"
+    local message="$3"
+    local marker
+
+    case "$level" in
+        ok)   marker="[ OK ]" ;;
+        warn) marker="[WARN]" ;;
+        fail) marker="[FAIL]" ;;
+        info) marker="[INFO]" ;;
+        *)    marker="[????]" ;;
+    esac
+
+    printf '%-24s %-43.43s ' "$label" "$message"
+
+    case "$level" in
+        ok)   status_ok ;;
+        warn) status_warn ;;
+        fail) status_fail ;;
+        info) status_info ;;
+        *)    printf '%s' "$marker" ;;
+    esac
+
+    printf '\n'
+
+    printf '%-24s %-43s %s\n' \
+        "$label" "$message" "$marker" >> "$REPORT_FILE"
 }
 
 pass() {
-    log "$1" "PASS — $2"
+    report_status ok "$1" "$2"
     passes=$((passes + 1))
 }
 
 warn() {
-    log "$1" "WARNING — $2"
+    local label="$1"
+    local message="$2"
+    local action="${3:-Review this item if the missing functionality is needed.}"
+
+    report_status warn "$label" "$message"
+    warning_guidance+=("$label|$message|$action")
     warnings=$((warnings + 1))
 }
 
 fail() {
-    log "$1" "FAIL — $2"
+    local label="$1"
+    local message="$2"
+    local action="${3:-Correct this issue and rerun verification.}"
+
+    report_status fail "$label" "$message"
+    failure_guidance+=("$label|$message|$action")
     failures=$((failures + 1))
+}
+
+command_version() {
+    local command_name="$1"
+
+    case "$command_name" in
+        brew)
+            brew --version 2>/dev/null | head -n 1
+            ;;
+        git)
+            git --version 2>/dev/null
+            ;;
+        gh)
+            gh --version 2>/dev/null | head -n 1
+            ;;
+        jq)
+            jq --version 2>/dev/null
+            ;;
+        wget)
+            wget --version 2>/dev/null |
+                awk 'NR == 1 {print $3; exit}'
+            ;;
+        ffmpeg)
+            ffmpeg -version 2>/dev/null |
+                awk 'NR == 1 {print $3; exit}'
+            ;;
+        ffprobe)
+            ffprobe -version 2>/dev/null |
+                awk 'NR == 1 {print $3; exit}'
+            ;;
+        yt-dlp)
+            yt-dlp --version 2>/dev/null | head -n 1
+            ;;
+        *)
+            "$command_name" --version 2>/dev/null | head -n 1
+            ;;
+    esac
 }
 
 check_command() {
     local command_name="$1"
     local label="$2"
-    local version_output
-    local version
 
     if command -v "$command_name" >/dev/null 2>&1; then
-        version_output="$("$command_name" --version 2>&1 | head -n 1)"
-        version="$(printf '%s\n' "$version_output" \
-            | grep -Eo '[vV]?[0-9]+([.][0-9A-Za-z-]+)+' \
-            | head -n 1)"
-        if [[ -n "$version" ]]; then
-            version="${version#v}"
-            version="${version#V}"
-            pass "$label" "v$version"
-        else
-            fail "$label" "version output was not recognized"
-        fi
+        pass "$label" "$(command_version "$command_name")"
     else
-        fail "$label" "command not found"
+        fail \
+            "$label" \
+            "command not found" \
+            "Install or restore $command_name, then rerun verification."
     fi
+}
+
+app_version() {
+    local app_path="$1"
+    local version=""
+
+    version="$(
+        defaults read "$app_path/Contents/Info.plist" \
+            CFBundleShortVersionString 2>/dev/null ||
+        defaults read "$app_path/Contents/Info" \
+            CFBundleShortVersionString 2>/dev/null ||
+        true
+    )"
+
+    printf '%s\n' "${version:-installed}"
 }
 
 check_app() {
     local label="$1"
     shift
 
-    local path
+    local app_path
 
-    for path in "$@"; do
-        if [[ -d "$path" ]]; then
-            pass "$label" "$path"
+    for app_path in "$@"; do
+        if [[ -d "$app_path" ]]; then
+            pass "$label" "$(app_version "$app_path")"
             return 0
         fi
     done
 
-    fail "$label" "application not found"
+    fail \
+        "$label" \
+        "application not found" \
+        "Install $label and rerun verification."
+
     return 1
 }
 
@@ -81,32 +184,63 @@ check_optional_app() {
     local label="$1"
     shift
 
-    local path
+    local app_path
 
-    for path in "$@"; do
-        if [[ -d "$path" ]]; then
-            pass "$label" "$path"
+    for app_path in "$@"; do
+        if [[ -d "$app_path" ]]; then
+            pass "$label" "$(app_version "$app_path")"
             return 0
         fi
     done
 
-    warn "$label" "application not found"
+    warn \
+        "$label" \
+        "application not found" \
+        "Install $label if this optional capability is desired."
+
     return 1
 }
 
-read_bool_default() {
+read_default() {
+    defaults read "$1" "$2" 2>/dev/null || echo unavailable
+}
+
+verify_default() {
     local domain="$1"
     local key="$2"
+    local expected="$3"
+    local label="$4"
+    local display="$5"
+    local actual
 
-    defaults read "$domain" "$key" 2>/dev/null || echo "unavailable"
+    actual="$(read_default "$domain" "$key")"
+
+    if [[ "$actual" == "$expected" ]]; then
+        pass "$label" "$display"
+    else
+        fail \
+            "$label" \
+            "expected $expected; found $actual" \
+            "Rerun the defaults module and verify the setting."
+    fi
 }
 
 section "MacBook Bootstrap Verification"
 
-log "Run date" "$(date)"
-log "Computer" "$(scutil --get ComputerName 2>/dev/null || hostname)"
-log "macOS" "$(sw_vers -productVersion)"
-log "Architecture" "$(uname -m)"
+report_status info "Profile" "$PROFILE"
+report_status info "Computer" "$(scutil --get ComputerName 2>/dev/null || hostname)"
+report_status info "macOS" "$(sw_vers -productVersion)"
+report_status info "Architecture" "$(uname -m)"
+
+if [[ ! -f "$PROFILE_FILE" ]]; then
+    fail \
+        "Profile" \
+        "unknown profile: $PROFILE" \
+        "Select minimal, standard, or developer."
+else
+    # shellcheck disable=SC1090
+    source "$PROFILE_FILE"
+fi
 
 section "Core Tools"
 
@@ -115,159 +249,206 @@ check_command git "Git"
 check_command gh "GitHub CLI"
 check_command curl "curl"
 check_command jq "jq"
-check_command python3 "Python"
 
-if python3 -m pip --version >/dev/null 2>&1; then
-    pip_version="$(python3 -m pip --version | awk '{print $2}')"
-    pass "pip" "v$pip_version"
-else
-    fail "pip" "python3 -m pip is unavailable"
+if [[ "$PROFILE" != "minimal" ]]; then
+    check_command wget "wget"
 fi
+
+section "Compatibility Tools"
+
+check_command ffmpeg "ffmpeg"
+check_command ffprobe "ffprobe"
+check_command yt-dlp "yt-dlp"
 
 section "Essential Applications"
 
-check_app "Firefox" \
+check_app \
+    "Firefox" \
     "/Applications/Firefox.app"
 
-check_app "Safari" \
-    "/Applications/Safari.app" \
-    "/System/Applications/Safari.app"
-
-check_app "Visual Studio Code" \
+check_app \
+    "Visual Studio Code" \
     "/Applications/Visual Studio Code.app"
 
-check_app "1Password" \
+check_app \
+    "1Password" \
     "/Applications/1Password.app"
 
-check_app "ChatGPT-Left75" \
+check_app \
+    "ChatGPT-Left75" \
     "/Applications/chatgpt-left75.app" \
     "/Applications/ChatGPT-Left75.app"
 
-section "Daily Applications"
+section "Standard Applications"
 
-check_optional_app "Spotify" \
+check_app \
+    "Spotify" \
     "/Applications/Spotify.app"
 
-check_optional_app "VLC" \
+check_app \
+    "VLC" \
     "/Applications/VLC.app"
 
-check_optional_app "FileZilla" \
-    "/Applications/FileZilla.app"
-
-check_optional_app "Rectangle" \
+check_app \
+    "Rectangle" \
     "/Applications/Rectangle.app"
 
-check_optional_app "Keka" \
+check_app \
+    "Keka" \
     "/Applications/Keka.app"
 
-check_optional_app "Moonlight" \
+check_app \
+    "Stats" \
+    "/Applications/Stats.app"
+
+check_app \
+    "Moonlight" \
     "/Applications/Moonlight.app"
 
-check_optional_app "Private Internet Access" \
+check_app \
+    "FileZilla" \
+    "/Applications/FileZilla.app"
+
+check_app \
+    "Private Internet Access" \
     "/Applications/Private Internet Access.app"
 
-if [[ "${MACBOOK_PROFILE:-standard}" == "homelab" || "${MACBOOK_PROFILE:-standard}" == "developer" ]]; then
-    section "Homelab and Media Applications"
+section "Manual Application State"
 
-    check_optional_app "Wireshark" \
+if [[ -d "/Applications/Amphetamine.app" ]]; then
+    pass "Amphetamine" "$(app_version "/Applications/Amphetamine.app")"
+else
+    report_status info "Amphetamine" "manual/App Store install pending"
+fi
+
+section "Retired Applications"
+
+if [[ ! -d "/Applications/Parsec.app" ]]; then
+    pass "Parsec" "removed"
+else
+    fail \
+        "Parsec" \
+        "retired application still installed" \
+        "Run modules/12-cleanup.sh."
+fi
+
+if [[ ! -e "$HOME/Library/Preferences/tv.parsec.www.plist" &&
+      ! -e "$HOME/Library/Caches/tv.parsec.www" ]]; then
+    pass "Parsec user data" "removed"
+else
+    fail \
+        "Parsec user data" \
+        "retired remnants remain" \
+        "Run modules/12-cleanup.sh."
+fi
+
+if [[ "$PROFILE" == "developer" ]]; then
+    section "Developer Environment"
+
+    check_command node "Node.js"
+    check_command python3 "Python"
+    check_command cmake "CMake"
+    check_command pkg-config "pkg-config"
+
+    if command -v rustc >/dev/null 2>&1; then
+        pass "Rust" "$(rustc --version)"
+    else
+        warn \
+            "Rust" \
+            "not installed" \
+            "Install rustup if Rust/Tauri development is required."
+    fi
+
+    if command -v cargo >/dev/null 2>&1; then
+        pass "Cargo" "$(cargo --version)"
+    else
+        warn \
+            "Cargo" \
+            "not installed" \
+            "Install rustup if Rust/Tauri development is required."
+    fi
+
+    if command -v cargo-tauri >/dev/null 2>&1; then
+        pass "Tauri CLI" "$(cargo-tauri --version 2>/dev/null || echo installed)"
+    elif command -v cargo >/dev/null 2>&1 &&
+         cargo tauri --version >/dev/null 2>&1; then
+        pass "Tauri CLI" "$(cargo tauri --version)"
+    else
+        warn \
+            "Tauri CLI" \
+            "not installed" \
+            "Install the Tauri CLI if ChatGPT-Left75 development is required."
+    fi
+
+    section "Developer / Extended Applications"
+
+    check_optional_app \
+        "Wireshark" \
         "/Applications/Wireshark.app"
 
-    check_optional_app "Raspberry Pi Imager" \
+    check_optional_app \
+        "Raspberry Pi Imager" \
         "/Applications/Raspberry Pi Imager.app"
 
-    check_optional_app "Balena Etcher" \
+    check_optional_app \
+        "Balena Etcher" \
         "/Applications/balenaEtcher.app" \
         "/Applications/BalenaEtcher.app"
 
-    check_optional_app "HandBrake" \
+    check_optional_app \
+        "HandBrake" \
         "/Applications/HandBrake.app"
 
-    check_optional_app "MKVToolNix" \
+    check_optional_app \
+        "MKVToolNix" \
         "/Applications/MKVToolNix.app"
 
-    check_optional_app "MakeMKV" \
+    check_optional_app \
+        "MakeMKV" \
         "/Applications/MakeMKV.app"
-fi
-
-section "Developer Environment"
-
-if command -v rustc >/dev/null 2>&1; then
-    pass "Rust" "$(rustc --version)"
-else
-    warn "Rust" "not installed"
-fi
-
-if command -v cargo >/dev/null 2>&1; then
-    pass "Cargo" "$(cargo --version)"
-else
-    warn "Cargo" "not installed"
-fi
-
-if command -v cargo-tauri >/dev/null 2>&1; then
-    pass "Tauri CLI" "$(cargo-tauri --version 2>/dev/null || echo installed)"
-elif command -v cargo >/dev/null 2>&1 && cargo tauri --version >/dev/null 2>&1; then
-    pass "Tauri CLI" "$(cargo tauri --version)"
-else
-    warn "Tauri CLI" "not installed"
-fi
-
-if [[ "${MACBOOK_PROFILE:-standard}" == "developer" ]]; then
-    if command -v node >/dev/null 2>&1; then
-        pass "Node.js" "$(node --version)"
-    else
-        warn "Node.js" "not installed"
-    fi
 fi
 
 section "macOS Preferences"
 
-finder_extensions="$(read_bool_default NSGlobalDomain AppleShowAllExtensions)"
-finder_pathbar="$(read_bool_default com.apple.finder ShowPathbar)"
-finder_statusbar="$(read_bool_default com.apple.finder ShowStatusBar)"
-dock_autohide="$(read_bool_default com.apple.dock autohide)"
-dock_recents="$(read_bool_default com.apple.dock show-recents)"
-tap_to_click="$(read_bool_default com.apple.AppleMultitouchTrackpad Clicking)"
-reduce_motion="$(read_bool_default com.apple.universalaccess reduceMotion)"
-reduce_transparency="$(read_bool_default com.apple.universalaccess reduceTransparency)"
+verify_default \
+    NSGlobalDomain AppleShowAllExtensions 1 \
+    "Finder extensions" "enabled"
 
-[[ "$finder_extensions" == "1" ]] \
-    && pass "Finder extensions" "enabled" \
-    || fail "Finder extensions" "expected enabled, found $finder_extensions"
+verify_default \
+    com.apple.finder ShowPathbar 1 \
+    "Finder path bar" "enabled"
 
-[[ "$finder_pathbar" == "1" ]] \
-    && pass "Finder path bar" "enabled" \
-    || fail "Finder path bar" "expected enabled, found $finder_pathbar"
+verify_default \
+    com.apple.finder ShowStatusBar 1 \
+    "Finder status bar" "enabled"
 
-[[ "$finder_statusbar" == "1" ]] \
-    && pass "Finder status bar" "enabled" \
-    || fail "Finder status bar" "expected enabled, found $finder_statusbar"
+verify_default \
+    com.apple.dock autohide 1 \
+    "Dock auto-hide" "enabled"
 
-[[ "$dock_autohide" == "1" ]] \
-    && pass "Dock auto-hide" "enabled" \
-    || fail "Dock auto-hide" "expected enabled, found $dock_autohide"
+verify_default \
+    com.apple.dock show-recents 0 \
+    "Dock recent apps" "disabled"
 
-[[ "$dock_recents" == "0" ]] \
-    && pass "Dock recent apps" "disabled" \
-    || fail "Dock recent apps" "expected disabled, found $dock_recents"
+verify_default \
+    com.apple.AppleMultitouchTrackpad Clicking 1 \
+    "Tap to click" "enabled"
 
-[[ "$tap_to_click" == "1" ]] \
-    && pass "Tap to click" "enabled" \
-    || warn "Tap to click" "expected enabled, found $tap_to_click"
+verify_default \
+    com.apple.universalaccess reduceMotion 1 \
+    "Reduce motion" "enabled"
 
-[[ "$reduce_motion" == "1" ]] \
-    && pass "Reduce motion" "enabled" \
-    || warn "Reduce motion" "expected enabled, found $reduce_motion"
+verify_default \
+    com.apple.universalaccess reduceTransparency 1 \
+    "Reduce transparency" "enabled"
 
-[[ "$reduce_transparency" == "1" ]] \
-    && pass "Reduce transparency" "enabled" \
-    || warn "Reduce transparency" "expected enabled, found $reduce_transparency"
-
-SCREENSHOT_FOLDER="$HOME/Pictures/Screenshots"
-
-if [[ -d "$SCREENSHOT_FOLDER" ]]; then
-    pass "Screenshot folder" "$SCREENSHOT_FOLDER"
+if [[ -d "$HOME/Pictures/Screenshots" ]]; then
+    pass "Screenshot folder" "~/Pictures/Screenshots"
 else
-    fail "Screenshot folder" "missing"
+    fail \
+        "Screenshot folder" \
+        "missing" \
+        "Run modules/20-defaults.sh."
 fi
 
 section "Custom ChatGPT Application"
@@ -286,41 +467,95 @@ done
 
 if [[ -n "$CHATGPT_APP" ]]; then
     bundle_id="$(
-        defaults read "$CHATGPT_APP/Contents/Info" CFBundleIdentifier \
-            2>/dev/null || echo unknown
+        defaults read "$CHATGPT_APP/Contents/Info" \
+            CFBundleIdentifier 2>/dev/null ||
+        echo unknown
     )"
 
-    app_version="$(
-        defaults read "$CHATGPT_APP/Contents/Info" CFBundleShortVersionString \
-            2>/dev/null || echo unknown
+    chatgpt_version="$(
+        defaults read "$CHATGPT_APP/Contents/Info" \
+            CFBundleShortVersionString 2>/dev/null ||
+        echo unknown
     )"
 
-    [[ "$bundle_id" == "com.matthewjordan.chatgpt-left75" ]] \
-        && pass "ChatGPT bundle ID" "$bundle_id" \
-        || warn "ChatGPT bundle ID" "$bundle_id"
+    if [[ "$bundle_id" == "com.matthewjordan.chatgpt-left75" ]]; then
+        pass "ChatGPT bundle ID" "$bundle_id"
+    else
+        warn \
+            "ChatGPT bundle ID" \
+            "$bundle_id" \
+            "Review the installed custom ChatGPT application metadata."
+    fi
 
-    pass "ChatGPT version" "$app_version"
+    pass "ChatGPT version" "$chatgpt_version"
 else
-    fail "ChatGPT metadata" "application missing"
+    fail \
+        "ChatGPT metadata" \
+        "application missing" \
+        "Restore or rebuild ChatGPT-Left75."
+fi
+
+if (( ${#warning_guidance[@]} > 0 ||
+      ${#failure_guidance[@]} > 0 )); then
+
+    section "Warnings & Actions"
+
+    for item in "${warning_guidance[@]}"; do
+        IFS='|' read -r item_label item_detail item_action <<< "$item"
+
+        status_warn
+        printf ' %s\n' "$item_label"
+        printf '       %s\n' "$item_detail"
+        printf '       Review: %s\n' "$item_action"
+
+        {
+            printf '[WARN] %s\n' "$item_label"
+            printf '       %s\n' "$item_detail"
+            printf '       Review: %s\n' "$item_action"
+        } >> "$REPORT_FILE"
+    done
+
+    for item in "${failure_guidance[@]}"; do
+        IFS='|' read -r item_label item_detail item_action <<< "$item"
+
+        status_fail
+        printf ' %s\n' "$item_label"
+        printf '       %s\n' "$item_detail"
+        printf '       Action: %s\n' "$item_action"
+
+        {
+            printf '[FAIL] %s\n' "$item_label"
+            printf '       %s\n' "$item_detail"
+            printf '       Action: %s\n' "$item_action"
+        } >> "$REPORT_FILE"
+    done
 fi
 
 section "Verification Result"
 
 total=$((passes + warnings + failures))
 
-log "Checks performed" "$total"
-log "Passed" "$passes"
-log "Warnings" "$warnings"
-log "Failures" "$failures"
+report_status info "Checks performed" "$total"
+report_status info "Passed" "$passes"
 
-if (( failures == 0 )); then
-    log "Overall status" "PASS"
+if (( warnings == 0 )); then
+    report_status ok "Warnings" "0"
 else
-    log "Overall status" "INCOMPLETE"
+    report_status warn "Warnings" "$warnings"
 fi
 
-log "Report" "$REPORT_FILE"
+if (( failures == 0 )); then
+    report_status ok "Failures" "0"
+    report_status ok "Overall status" "PASS"
+else
+    report_status fail "Failures" "$failures"
+    report_status fail "Overall status" "INCOMPLETE"
+fi
 
-printf '\nVerification report: %s\n' "$REPORT_FILE"
+larry_info "Verification report: $REPORT_FILE"
+
+if (( failures > 0 )); then
+    exit 1
+fi
 
 exit 0

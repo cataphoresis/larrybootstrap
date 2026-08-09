@@ -1,6 +1,8 @@
 param(
     [ValidateSet("standard")]
-    [string]$Profile = "standard"
+    [string]$Profile = "standard",
+
+    [switch]$DryRun
 )
 
 Set-StrictMode -Version Latest
@@ -11,7 +13,7 @@ $Root = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot\lib\Common.ps1"
 
 $ManifestPath = Join-Path $Root "profiles\direct-installs-$Profile.json"
-$Report = New-TimestampedReport -RootDirectory $Root -Prefix "direct-installs"
+$Report = New-TimestampedReport -RootDirectory $Root -Prefix "direct-installs" -DryRun:$DryRun
 $Present = 0
 $Installed = 0
 $RequiredFailures = 0
@@ -19,7 +21,7 @@ $OptionalFailures = 0
 
 function Add-ReportLine {
     param([AllowEmptyString()][string]$Text)
-    $Text | Add-Content -Encoding UTF8 $Report
+    if ($Report) { $Text | Add-Content -Encoding UTF8 $Report }
 }
 
 function Get-ExpandedDetectionPath {
@@ -142,12 +144,12 @@ function Install-DirectPackage {
     }
 }
 
-"Windows Bootstrap Direct Installation" | Set-Content -Encoding UTF8 $Report
-"=====================================" | Add-Content $Report
-"Run date: $(Get-Date)" | Add-Content $Report
-"Profile: $Profile" | Add-Content $Report
-"Manifest: $ManifestPath" | Add-Content $Report
-"" | Add-Content $Report
+Add-ReportLine "Windows Bootstrap Direct Installation"
+Add-ReportLine "====================================="
+Add-ReportLine "Run date: $(Get-Date)"
+Add-ReportLine "Profile: $Profile"
+Add-ReportLine "Manifest: $ManifestPath"
+Add-ReportLine ""
 
 Write-Section "Direct Application Installation"
 Write-InfoLine "Profile" $Profile
@@ -172,6 +174,13 @@ foreach ($Package in $Packages) {
         $Present++
         Write-OK $Package.name "already installed at $ExistingPath"
         Add-ReportLine ("[ OK ] {0,-28} already installed ({1})" -f $Package.name, $ExistingPath)
+        continue
+    }
+
+    if ($DryRun) {
+        $Installed++
+        Write-InfoLine $Package.name "would download, validate, and install"
+        Add-ReportLine ("[INFO] {0,-28} would install" -f $Package.name)
         continue
     }
 
@@ -203,7 +212,7 @@ foreach ($Package in $Packages) {
 
 Write-Section "Direct Installation Result"
 Write-InfoLine "Already present" $Present.ToString()
-Write-InfoLine "Newly installed" $Installed.ToString()
+Write-InfoLine $(if ($DryRun) { "Would install" } else { "Newly installed" }) $Installed.ToString()
 Write-InfoLine "Optional failures" $OptionalFailures.ToString()
 Write-InfoLine "Required failures" $RequiredFailures.ToString()
 
@@ -216,7 +225,7 @@ else {
     Write-Fail "Overall status" $Status
 }
 
-Write-InfoLine "Report" $Report
+if ($Report) { Write-InfoLine "Report" $Report } else { Write-InfoLine "Report" "suppressed in dry-run mode" }
 Add-ReportLine ""
 Add-ReportLine "Already present: $Present"
 Add-ReportLine "Newly installed: $Installed"

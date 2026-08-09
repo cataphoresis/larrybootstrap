@@ -2,7 +2,9 @@ param(
     [ValidateSet("standard", "homelab", "developer")]
     [string]$Profile = "standard",
 
-    [switch]$VerifyOnly
+    [switch]$VerifyOnly,
+
+    [switch]$DryRun
 )
 
 Set-StrictMode -Version Latest
@@ -23,6 +25,10 @@ $Arguments = @("-Profile", $Profile)
 
 if ($VerifyOnly) {
     $Arguments += "-VerifyOnly"
+}
+
+if ($DryRun) {
+    $Arguments += "-DryRun"
 }
 
 $Pwsh = Get-Command pwsh.exe -ErrorAction Stop

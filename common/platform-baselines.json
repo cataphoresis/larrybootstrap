@@ -1,0 +1,14 @@
+{
+  "windows": {
+    "repository": "cataphoresis/windows-bootstrap",
+    "commit": "c3ea1fbfdb80b4185f3617e82d7ecba845a2c2ef"
+  },
+  "macos": {
+    "repository": "cataphoresis/macbook-bootstrap",
+    "commit": "a75d2cc"
+  },
+  "linux": {
+    "repository": "cataphoresis/linuxbook-bootstrap",
+    "commit": "583d685"
+  }
+}

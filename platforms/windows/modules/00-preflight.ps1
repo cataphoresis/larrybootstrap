@@ -1,3 +1,5 @@
+param([switch]$DryRun)
+
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
@@ -6,7 +8,8 @@ $Root = Split-Path -Parent $PSScriptRoot
 
 $Report = New-TimestampedReport `
     -RootDirectory $Root `
-    -Prefix "preflight"
+    -Prefix "preflight" `
+    -DryRun:$DryRun
 
 $Failures = 0
 $Warnings = 0
@@ -18,7 +21,7 @@ function Add-ReportLine {
         [string]$Text
     )
 
-    $Text | Add-Content -Encoding UTF8 $Report
+    if ($Report) { $Text | Add-Content -Encoding UTF8 $Report }
 }
 
 function Record-OK {
@@ -62,10 +65,10 @@ function Record-Fail {
     Add-ReportLine ("[FAIL] {0,-28} {1}" -f $Label, $Message)
 }
 
-"Windows Bootstrap Preflight" | Set-Content -Encoding UTF8 $Report
-"===========================" | Add-Content $Report
-"Run date: $(Get-Date)" | Add-Content $Report
-"" | Add-Content $Report
+Add-ReportLine "Windows Bootstrap Preflight"
+Add-ReportLine "==========================="
+Add-ReportLine "Run date: $(Get-Date)"
+Add-ReportLine ""
 
 Write-Section "Windows Bootstrap Preflight"
 
@@ -244,13 +247,18 @@ else {
 
 $WriteTest = Join-Path $Root ".preflight-write-test"
 
-try {
-    "test" | Set-Content -Encoding UTF8 $WriteTest
-    Remove-Item $WriteTest -Force
-    Record-OK "Repository writable" "PASS"
+if ($DryRun) {
+    Record-OK "Repository write test" "skipped in dry-run mode"
 }
-catch {
-    Record-Fail "Repository writable" $_.Exception.Message
+else {
+    try {
+        "test" | Set-Content -Encoding UTF8 $WriteTest
+        Remove-Item $WriteTest -Force
+        Record-OK "Repository writable" "PASS"
+    }
+    catch {
+        Record-Fail "Repository writable" $_.Exception.Message
+    }
 }
 
 foreach ($Directory in @("modules", "profiles", "reports", "backups")) {
@@ -282,7 +290,7 @@ else {
     Add-ReportLine "Overall status: FAIL"
 }
 
-Write-InfoLine "Report" $Report
+if ($Report) { Write-InfoLine "Report" $Report } else { Write-InfoLine "Report" "suppressed in dry-run mode" }
 Add-ReportLine "Report: $Report"
 
 if ($Failures -gt 0) {

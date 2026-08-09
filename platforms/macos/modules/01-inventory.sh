@@ -3,30 +3,99 @@
 set -uo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# shellcheck source=modules/common.sh
+source "$ROOT_DIR/modules/common.sh"
+
 REPORT_DIR="$ROOT_DIR/reports"
 BACKUP_DIR="$ROOT_DIR/backups"
 TIMESTAMP="$(date '+%Y-%m-%d_%H-%M-%S')"
 REPORT_FILE="$REPORT_DIR/inventory-$TIMESTAMP.txt"
 BACKUP_PATH="$BACKUP_DIR/inventory-$TIMESTAMP"
+MACBOOK_DRY_RUN="${MACBOOK_DRY_RUN:-0}"
+
+if [[ "$MACBOOK_DRY_RUN" == "1" ]]; then
+    larry_section "MacBook Bootstrap Inventory"
+
+    status_info
+    printf ' %-24s %s\n' "Mode" "dry-run"
+
+    status_info
+    printf ' %-24s %s\n' "Inventory snapshot" "would capture"
+
+    status_info
+    printf ' %-24s %s\n' "Persistent files" "none"
+
+    larry_info "Inventory collection skipped to preserve zero-write dry-run."
+    exit 0
+fi
 
 mkdir -p "$REPORT_DIR" "$BACKUP_PATH"
 
 warning_count=0
+warning_guidance=()
 
 log() {
-    printf '%-30s %s\n' "$1" "$2" | tee -a "$REPORT_FILE"
+    local label="$1"
+    local message="$2"
+
+    printf '%-24s %s\n' "$label" "$message"
+    printf '%-24s %s\n' "$label" "$message" >> "$REPORT_FILE"
+}
+
+report_status() {
+    local level="$1"
+    local label="$2"
+    local message="$3"
+    local marker
+
+    case "$level" in
+        ok)   marker="[ OK ]" ;;
+        warn) marker="[WARN]" ;;
+        fail) marker="[FAIL]" ;;
+        info) marker="[INFO]" ;;
+        *)    marker="[????]" ;;
+    esac
+
+    printf '%-24s %-43.43s ' "$label" "$message"
+
+    case "$level" in
+        ok)   status_ok ;;
+        warn) status_warn ;;
+        fail) status_fail ;;
+        info) status_info ;;
+        *)    printf '%s' "$marker" ;;
+    esac
+
+    printf '\n'
+
+    printf '%-24s %-43s %s\n' \
+        "$label" "$message" "$marker" >> "$REPORT_FILE"
 }
 
 section() {
-    printf '\n%s\n%s\n' "$1" "$(printf '%*s' "${#1}" '' | tr ' ' '=')" \
-        | tee -a "$REPORT_FILE"
+    local title="$1"
+
+    larry_section "$title"
+
+    {
+        printf '\n%s\n' "$title"
+        printf '%*s\n' "${#title}" '' | tr ' ' '='
+    } >> "$REPORT_FILE"
 }
 
 warn() {
-    log "$1" "WARNING — $2"
+    local label="$1"
+    local message="$2"
+
+    report_status warn "$label" "$message"
+
+    warning_guidance+=(
+        "$label|$message|Review the inventory report if this information is needed."
+    )
+
     warning_count=$((warning_count + 1))
 }
-
 command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
@@ -41,19 +110,19 @@ section "System Summary"
 if system_profiler SPHardwareDataType SPSoftwareDataType \
     > "$BACKUP_PATH/system-profile.txt" 2>/dev/null
 then
-    log "System profile" "$BACKUP_PATH/system-profile.txt"
+    report_status ok "System profile" "captured"
 else
     warn "System profile" "could not be collected"
 fi
 
 if sw_vers > "$BACKUP_PATH/macos-version.txt" 2>/dev/null; then
-    log "macOS version" "$BACKUP_PATH/macos-version.txt"
+    report_status ok "macOS version" "captured"
 else
     warn "macOS version" "could not be collected"
 fi
 
 if diskutil list > "$BACKUP_PATH/disk-layout.txt" 2>/dev/null; then
-    log "Disk layout" "$BACKUP_PATH/disk-layout.txt"
+    report_status ok "Disk layout" "captured"
 else
     warn "Disk layout" "could not be collected"
 fi
@@ -75,8 +144,8 @@ if find "${APP_DIRECTORIES[@]}" \
     > "$BACKUP_PATH/applications.txt"
 then
     APP_COUNT="$(wc -l < "$BACKUP_PATH/applications.txt" | tr -d ' ')"
-    log "Application inventory" "$BACKUP_PATH/applications.txt"
-    log "Applications found" "$APP_COUNT"
+    report_status ok "Application inventory" "captured"
+    report_status info "Applications found" "$APP_COUNT"
 else
     warn "Application inventory" "could not be completed"
 fi
@@ -87,7 +156,7 @@ if command_exists brew; then
     if brew list --formula 2>/dev/null \
         | sort > "$BACKUP_PATH/brew-formulae.txt"
     then
-        log "Formula inventory" "$BACKUP_PATH/brew-formulae.txt"
+        report_status ok "Formula inventory" "captured"
     else
         warn "Formula inventory" "could not be collected"
     fi
@@ -95,7 +164,7 @@ if command_exists brew; then
     if brew list --cask 2>/dev/null \
         | sort > "$BACKUP_PATH/brew-casks.txt"
     then
-        log "Cask inventory" "$BACKUP_PATH/brew-casks.txt"
+        report_status ok "Cask inventory" "captured"
     else
         warn "Cask inventory" "could not be collected"
     fi
@@ -105,13 +174,13 @@ if command_exists brew; then
         --force \
         >/dev/null 2>&1
     then
-        log "Brewfile snapshot" "$BACKUP_PATH/Brewfile"
+        report_status ok "Brewfile snapshot" "captured"
     else
         warn "Brewfile snapshot" "brew bundle dump failed"
     fi
 
     if brew config > "$BACKUP_PATH/brew-config.txt" 2>/dev/null; then
-        log "Homebrew configuration" "$BACKUP_PATH/brew-config.txt"
+        report_status ok "Homebrew configuration" "captured"
     else
         warn "Homebrew configuration" "could not be collected"
     fi
@@ -130,9 +199,13 @@ for tool in git rustc cargo node npm python3; do
             "$tool" --version 2>&1 | head -n 1
         } > "$BACKUP_PATH/$tool.txt"
 
-        log "$tool" "$BACKUP_PATH/$tool.txt"
+        tool_version="$(
+            "$tool" --version 2>&1 |
+                head -n 1
+        )"
+        report_status ok "$tool" "$tool_version"
     else
-        log "$tool" "Not installed"
+        report_status info "$tool" "not installed"
     fi
 done
 
@@ -140,7 +213,7 @@ if command_exists cargo; then
     if cargo install --list \
         > "$BACKUP_PATH/cargo-installed.txt" 2>/dev/null
     then
-        log "Cargo packages" "$BACKUP_PATH/cargo-installed.txt"
+        report_status ok "Cargo packages" "captured"
     else
         warn "Cargo packages" "could not be collected"
     fi
@@ -166,36 +239,36 @@ CHATGPT_PROJECT="$HOME/chatgpt-left75"
 CHATGPT_BUILT_APP="$CHATGPT_PROJECT/src-tauri/target/release/bundle/macos/chatgpt-left75.app"
 
 if [[ -n "$CHATGPT_INSTALLED" ]]; then
-    log "Installed application" "$CHATGPT_INSTALLED"
+    report_status ok "Installed application" "chatgpt-left75.app"
 
     defaults read "$CHATGPT_INSTALLED/Contents/Info" \
         > "$BACKUP_PATH/chatgpt-left75-info.txt" 2>/dev/null || true
 
     if [[ -s "$BACKUP_PATH/chatgpt-left75-info.txt" ]]; then
-        log "Application metadata" "$BACKUP_PATH/chatgpt-left75-info.txt"
+        report_status ok "Application metadata" "captured"
     else
         warn "Application metadata" "could not be read"
     fi
 else
-    log "Installed application" "Not found"
+    report_status info "Installed application" "not found"
 fi
 
 if [[ -d "$CHATGPT_PROJECT" ]]; then
-    log "Source project" "$CHATGPT_PROJECT"
+    report_status ok "Source project" "chatgpt-left75"
 
     if command_exists git && git -C "$CHATGPT_PROJECT" status \
         > "$BACKUP_PATH/chatgpt-project-git-status.txt" 2>/dev/null
     then
-        log "Project Git status" "$BACKUP_PATH/chatgpt-project-git-status.txt"
+        report_status ok "Project Git status" "captured"
     fi
 else
-    log "Source project" "Not found"
+    report_status info "Source project" "not found"
 fi
 
 if [[ -d "$CHATGPT_BUILT_APP" ]]; then
-    log "Built application" "$CHATGPT_BUILT_APP"
+    report_status ok "Built application" "release build present"
 else
-    log "Built application" "Not found"
+    report_status info "Built application" "not found"
 fi
 
 section "Login and Launch Items"
@@ -208,7 +281,7 @@ tell application "System Events"
 end tell
 APPLESCRIPT
 then
-    log "Login-item inventory" "$LOGIN_ITEMS_FILE"
+    report_status ok "Login-item inventory" "captured"
 else
     : > "$LOGIN_ITEMS_FILE"
     warn "Login-item inventory" "Automation permission unavailable or System Events declined"
@@ -223,13 +296,13 @@ if [[ -d "$HOME/Library/LaunchAgents" ]]; then
         | sort \
         > "$BACKUP_PATH/user-launchagents.txt"
     then
-        log "User LaunchAgents" "$BACKUP_PATH/user-launchagents.txt"
+        report_status ok "User LaunchAgents" "captured"
     else
         warn "User LaunchAgents" "could not be collected"
     fi
 else
     : > "$BACKUP_PATH/user-launchagents.txt"
-    log "User LaunchAgents" "Directory does not exist"
+    report_status info "User LaunchAgents" "directory does not exist"
 fi
 
 if [[ -d "/Library/LaunchAgents" ]]; then
@@ -241,7 +314,7 @@ if [[ -d "/Library/LaunchAgents" ]]; then
         | sort \
         > "$BACKUP_PATH/system-launchagents.txt" || true
 
-    log "System LaunchAgents" "$BACKUP_PATH/system-launchagents.txt"
+    report_status ok "System LaunchAgents" "captured"
 fi
 
 section "Preference Snapshots"
@@ -252,7 +325,7 @@ snapshot_defaults() {
     local label="$3"
 
     if defaults read "$domain" > "$output" 2>/dev/null; then
-        log "$label" "$output"
+        report_status ok "$label" "captured"
     else
         : > "$output"
         warn "$label" "domain could not be read"
@@ -275,14 +348,14 @@ snapshot_defaults com.apple.screencapture \
     "$BACKUP_PATH/screencapture-defaults.txt" \
     "Screenshot preferences"
 
-snapshot_defaults com.apple.trackpad \
+snapshot_defaults com.apple.AppleMultitouchTrackpad \
     "$BACKUP_PATH/trackpad-defaults.txt" \
     "Trackpad preferences"
 
 section "Power and Display"
 
 if pmset -g custom > "$BACKUP_PATH/power-settings.txt" 2>/dev/null; then
-    log "Power settings" "$BACKUP_PATH/power-settings.txt"
+    report_status ok "Power settings" "captured"
 else
     warn "Power settings" "could not be collected"
 fi
@@ -290,7 +363,7 @@ fi
 if system_profiler SPDisplaysDataType \
     > "$BACKUP_PATH/display-profile.txt" 2>/dev/null
 then
-    log "Display profile" "$BACKUP_PATH/display-profile.txt"
+    report_status ok "Display profile" "captured"
 else
     warn "Display profile" "could not be collected"
 fi
@@ -300,29 +373,48 @@ section "Network Snapshot"
 if networksetup -listallhardwareports \
     > "$BACKUP_PATH/network-hardware-ports.txt" 2>/dev/null
 then
-    log "Network hardware" "$BACKUP_PATH/network-hardware-ports.txt"
+    report_status ok "Network hardware" "captured"
 else
     warn "Network hardware" "could not be collected"
 fi
 
 if scutil --dns > "$BACKUP_PATH/dns-configuration.txt" 2>/dev/null; then
-    log "DNS configuration" "$BACKUP_PATH/dns-configuration.txt"
+    report_status ok "DNS configuration" "captured"
 else
     warn "DNS configuration" "could not be collected"
 fi
 
-section "Inventory Result"
+if (( ${#warning_guidance[@]} > 0 )); then
+    section "Warnings & Actions"
 
-log "Warnings" "$warning_count"
-log "Status" "COMPLETE"
+    for item in "${warning_guidance[@]}"; do
+        IFS='|' read -r warning_label warning_detail warning_action <<< "$item"
 
-if (( warning_count > 0 )); then
-    log "Notice" "Optional items were skipped; bootstrap may continue"
-else
-    log "Notice" "All inventory operations completed"
+        status_warn
+        printf ' %s\n' "$warning_label"
+        printf '       %s\n' "$warning_detail"
+        printf '       %s\n' "$warning_action"
+
+        {
+            printf '[WARN] %s\n' "$warning_label"
+            printf '       %s\n' "$warning_detail"
+            printf '       %s\n' "$warning_action"
+        } >> "$REPORT_FILE"
+    done
 fi
 
-printf '\nInventory report: %s\n' "$REPORT_FILE"
-printf 'Snapshot directory: %s\n' "$BACKUP_PATH"
+section "Inventory Result"
+
+if (( warning_count == 0 )); then
+    report_status ok "Warnings" "0"
+    report_status ok "Status" "COMPLETE"
+else
+    report_status warn "Warnings" "$warning_count"
+    report_status ok "Status" "COMPLETE"
+fi
+
+report_status info "Snapshot" "$(basename "$BACKUP_PATH")"
+larry_info "Snapshot directory: $BACKUP_PATH"
+larry_info "Inventory report: $REPORT_FILE"
 
 exit 0
