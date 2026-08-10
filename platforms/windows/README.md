@@ -6,7 +6,6 @@ Recreates Matthew's lean, remote-first Windows environment.
 
 - PowerShell 7 launched directly through Larry PowerShell
 - WinGet for desktop applications
-- Scoop for lightweight command-line tools
 - Inventory before making changes
 - Skip applications that are already installed
 - Firefox as primary browser
@@ -14,9 +13,10 @@ Recreates Matthew's lean, remote-first Windows environment.
 - Cross-platform application consistency
 - Thin-client use: remote access, SSH, web tools, and homelab administration
 
-## Planned standard applications
+## Implemented standard applications
 
 - PowerShell 7
+- Git
 - Firefox
 - Chromium
 - Visual Studio Code
@@ -29,6 +29,11 @@ Recreates Matthew's lean, remote-first Windows environment.
 - Private Internet Access
 - 7-Zip
 - PowerToys
+
+PowerShell 7 and WinGet through Microsoft App Installer are prerequisites.
+Git is installed by the standard WinGet stage when absent. Required package
+installs are retried once after a transient failure, and the parent process
+refreshes PATH before later configuration and verification stages.
 
 Parsec is retired from the Larry ecosystem. The cleanup stage removes the
 Parsec app, its separately registered virtual display/USB drivers, and known
@@ -45,6 +50,10 @@ PowerToys FancyZones and Workspaces are enabled automatically. The initial
 depend on the final application positions and monitor arrangement.
 
 ## Usage
+
+Only the `standard` profile currently has complete Windows package and direct-
+install manifests. `homelab` and `developer` are reserved launcher/root choices
+and are not release-ready on Windows.
 
 Run the complete standard bootstrap from PowerShell 7:
 
@@ -69,6 +78,11 @@ Dry-run mode performs inspection and prints planned actions to stdout. It does
 not install or remove packages, refresh package sources, download files, create
 temporary files, write reports or backups, change registry or configuration
 values, restart processes, or prune old artifacts.
+
+The known Windows 10 host validates at 36 passed checks, one understood warning
+for a WSL build without `wsl --mount`, and zero failures. Exact clean-machine
+validation remains a separate-machine/full-VM gate; Windows Sandbox is not a
+representative target for AppX, user-context, or networking-driver installers.
 
 ## Terminal presentation contract
 

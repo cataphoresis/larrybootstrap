@@ -83,6 +83,11 @@ platform behavior is imported and verified. The revisions recorded in
 `common/platform-baselines.json` are the source-of-truth checkpoints for this
 integration milestone.
 
+The shared standard profile reconciles Firefox, the platform-native secondary
+browser, Visual Studio Code, a lightweight editor, 1Password, VLC, Spotify, an
+archive utility, and Moonlight. Applications without a safe or useful
+implementation on all three systems remain platform-specific.
+
 ## Terminal style
 
 LarryBootstrap uses an intentionally retro BBS-inspired terminal style on all
@@ -101,27 +106,38 @@ output, logs, and unattended runs.
 ## History and releases
 
 The Windows, Linux, and macOS repositories were imported with their original
-commit histories intact. Platform releases use prefixed tags, including
-`windows-v1.0.0` and `macos-v1.0.0`.
+commit histories intact. Native validation across Windows, Debian 13, and
+macOS Monterey is recorded by `unified-v1.0.0`. Windows clean-provisioning
+hardening is recorded by `windows-v1.0.1` at commit `bab829f`.
 
 The original standalone repositories remain recovery sources until the unified
-bootstrap has been validated on all three operating systems.
+bootstrap also completes an exact full-profile test on a separate physical
+machine or conventional VM. Windows Sandbox was evaluated and rejected for
+this purpose because its Windows 10 image does not support the required AppX
+and networking-driver installers reliably.
 
 ## Packaging releases
 
-The initial packaged release targets Windows and preserves the tested
+The current packaged release targets Windows and preserves the tested
 `launcher.ps1` behavior. From PowerShell 7:
 
 ```powershell
-.\scripts\package-windows.ps1 -Version 0.1.0
+.\scripts\package-windows.ps1 -Version 1.0.1
 ```
 
 The command creates a versioned ZIP and SHA-256 checksum in `dist/`. The ZIP
 contains only the shared profile and Windows runtime dependencies needed by the
 launcher; it excludes the Linux and macOS implementations.
 
-Incremental launcher packaging follows this order:
+Current packaging state:
 
-1. Windows v0.1.x — establish the package and release process.
-2. Linux v0.2.x — add a Linux-native launcher package and tests.
-3. macOS v0.3.x — add a macOS-native launcher package and tests.
+1. Windows `v1.0.1` — packaged and validated on the known Windows host.
+2. Linux — native implementation validated; standalone launcher packaging is
+   still future work.
+3. macOS — native implementation validated; standalone launcher packaging is
+   still future work.
+
+The next release gate is an exact Windows standard-profile installation on a
+separate physical machine or full VM, followed by idempotency and final
+verification. Do not retire the standalone recovery repositories before that
+gate passes.
