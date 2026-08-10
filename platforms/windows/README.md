@@ -79,10 +79,14 @@ not install or remove packages, refresh package sources, download files, create
 temporary files, write reports or backups, change registry or configuration
 values, restart processes, or prune old artifacts.
 
-The known Windows 10 host validates at 36 passed checks, one understood warning
-for a WSL build without `wsl --mount`, and zero failures. Exact clean-machine
-validation remains a separate-machine/full-VM gate; Windows Sandbox is not a
-representative target for AppX, user-context, or networking-driver installers.
+The known Windows 10 host was revalidated on 2026-08-10 at 36 passed checks,
+one understood warning for a WSL build without `wsl --mount`, and zero
+failures. The audit completed with no collection errors. A strict dry-run
+completed without persistent changes but correctly failed its preflight guard
+because the system drive had 4.8 GB free, below the required 5 GB minimum.
+Exact clean-machine validation remains a separate-machine/full-VM gate;
+Windows Sandbox is not a representative target for AppX, user-context, or
+networking-driver installers.
 
 ## Terminal presentation contract
 
