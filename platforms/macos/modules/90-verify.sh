@@ -242,113 +242,194 @@ else
     source "$PROFILE_FILE"
 fi
 
+formula_command() {
+    case "$1" in
+        python) printf 'python3\n' ;;
+        *)      printf '%s\n' "$1" ;;
+    esac
+}
+
+formula_label() {
+    case "$1" in
+        git)        printf 'Git\n' ;;
+        gh)         printf 'GitHub CLI\n' ;;
+        node)       printf 'Node.js\n' ;;
+        python)     printf 'Python\n' ;;
+        cmake)      printf 'CMake\n' ;;
+        pkg-config) printf 'pkg-config\n' ;;
+        *)          printf '%s\n' "$1" ;;
+    esac
+}
+
+cask_label() {
+    case "$1" in
+        firefox)                 printf 'Firefox\n' ;;
+        visual-studio-code)      printf 'Visual Studio Code\n' ;;
+        rectangle)               printf 'Rectangle\n' ;;
+        1password)               printf '1Password\n' ;;
+        spotify)                 printf 'Spotify\n' ;;
+        vlc)                     printf 'VLC\n' ;;
+        keka)                    printf 'Keka\n' ;;
+        stats)                   printf 'Stats\n' ;;
+        moonlight)               printf 'Moonlight\n' ;;
+        wireshark-app)           printf 'Wireshark\n' ;;
+        balenaetcher)            printf 'Balena Etcher\n' ;;
+        private-internet-access) printf 'Private Internet Access\n' ;;
+        handbrake-app)           printf 'HandBrake\n' ;;
+        *)                       printf '%s\n' "$1" ;;
+    esac
+}
+
+cask_app_paths() {
+    case "$1" in
+        firefox)
+            printf '%s\n' "/Applications/Firefox.app"
+            ;;
+        visual-studio-code)
+            printf '%s\n' "/Applications/Visual Studio Code.app"
+            ;;
+        rectangle)
+            printf '%s\n' "/Applications/Rectangle.app"
+            ;;
+        1password)
+            printf '%s\n' "/Applications/1Password.app"
+            ;;
+        spotify)
+            printf '%s\n' "/Applications/Spotify.app"
+            ;;
+        vlc)
+            printf '%s\n' "/Applications/VLC.app"
+            ;;
+        keka)
+            printf '%s\n' "/Applications/Keka.app"
+            ;;
+        stats)
+            printf '%s\n' "/Applications/Stats.app"
+            ;;
+        moonlight)
+            printf '%s\n' "/Applications/Moonlight.app"
+            ;;
+        wireshark-app)
+            printf '%s\n' "/Applications/Wireshark.app"
+            ;;
+        balenaetcher)
+            printf '%s\n' \
+                "/Applications/balenaEtcher.app" \
+                "/Applications/BalenaEtcher.app"
+            ;;
+        private-internet-access)
+            printf '%s\n' "/Applications/Private Internet Access.app"
+            ;;
+        handbrake-app)
+            printf '%s\n' "/Applications/HandBrake.app"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+manual_app_label() {
+    case "$1" in
+        amphetamine)         printf 'Amphetamine\n' ;;
+        raspberry-pi-imager) printf 'Raspberry Pi Imager\n' ;;
+        *)                   printf '%s\n' "$1" ;;
+    esac
+}
+
+manual_app_paths() {
+    case "$1" in
+        amphetamine)
+            printf '%s\n' "/Applications/Amphetamine.app"
+            ;;
+        raspberry-pi-imager)
+            printf '%s\n' "/Applications/Raspberry Pi Imager.app"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 section "Core Tools"
 
 check_command brew "Homebrew"
-check_command git "Git"
-check_command gh "GitHub CLI"
 check_command curl "curl"
-check_command jq "jq"
 
-if [[ "$PROFILE" != "minimal" ]]; then
-    check_command wget "wget"
+section "Profile Formulae"
+
+for formula in "${FORMULAE[@]}"; do
+    command_name="$(formula_command "$formula")"
+    label="$(formula_label "$formula")"
+    check_command "$command_name" "$label"
+done
+
+if declare -p MANUAL_FORMULAE >/dev/null 2>&1; then
+    section "Compatibility Tools"
+
+    for formula in "${MANUAL_FORMULAE[@]}"; do
+        case "$formula" in
+            ffmpeg)
+                check_command ffmpeg "ffmpeg"
+                check_command ffprobe "ffprobe"
+                ;;
+            *)
+                check_command \
+                    "$(formula_command "$formula")" \
+                    "$(formula_label "$formula")"
+                ;;
+        esac
+    done
 fi
 
-section "Compatibility Tools"
+section "Profile Applications"
 
-check_command ffmpeg "ffmpeg"
-check_command ffprobe "ffprobe"
-check_command yt-dlp "yt-dlp"
+for cask in "${CASKS[@]}"; do
+    label="$(cask_label "$cask")"
 
-section "Essential Applications"
+    if ! paths="$(cask_app_paths "$cask")"; then
+        fail \
+            "$label" \
+            "verification mapping missing" \
+            "Add an application-path mapping for the $cask cask."
+        continue
+    fi
 
-check_app \
-    "Firefox" \
-    "/Applications/Firefox.app"
+    app_paths=()
 
-check_app \
-    "Visual Studio Code" \
-    "/Applications/Visual Studio Code.app"
+    while IFS= read -r app_path; do
+        app_paths+=("$app_path")
+    done <<< "$paths"
 
-check_app \
-    "1Password" \
-    "/Applications/1Password.app"
+    check_app "$label" "${app_paths[@]}"
+done
 
-check_app \
-    "ChatGPT-Left75" \
-    "/Applications/chatgpt-left75.app" \
-    "/Applications/ChatGPT-Left75.app"
+if declare -p MANUAL_APPS >/dev/null 2>&1; then
+    section "Manual / Compatibility-managed Applications"
 
-section "Standard Applications"
+    for app in "${MANUAL_APPS[@]}"; do
+        label="$(manual_app_label "$app")"
 
-check_app \
-    "Spotify" \
-    "/Applications/Spotify.app"
+        if ! paths="$(manual_app_paths "$app")"; then
+            warn \
+                "$label" \
+                "verification mapping missing" \
+                "Add an application-path mapping for the $app manual application."
+            continue
+        fi
 
-check_app \
-    "VLC" \
-    "/Applications/VLC.app"
+        app_paths=()
 
-check_app \
-    "Rectangle" \
-    "/Applications/Rectangle.app"
+        while IFS= read -r app_path; do
+            app_paths+=("$app_path")
+        done <<< "$paths"
 
-check_app \
-    "Keka" \
-    "/Applications/Keka.app"
-
-check_app \
-    "Stats" \
-    "/Applications/Stats.app"
-
-check_app \
-    "Moonlight" \
-    "/Applications/Moonlight.app"
-
-check_app \
-    "FileZilla" \
-    "/Applications/FileZilla.app"
-
-check_app \
-    "Private Internet Access" \
-    "/Applications/Private Internet Access.app"
-
-section "Manual Application State"
-
-if [[ -d "/Applications/Amphetamine.app" ]]; then
-    pass "Amphetamine" "$(app_version "/Applications/Amphetamine.app")"
-else
-    report_status info "Amphetamine" "manual/App Store install pending"
-fi
-
-section "Retired Applications"
-
-if [[ ! -d "/Applications/Parsec.app" ]]; then
-    pass "Parsec" "removed"
-else
-    fail \
-        "Parsec" \
-        "retired application still installed" \
-        "Run modules/12-cleanup.sh."
-fi
-
-if [[ ! -e "$HOME/Library/Preferences/tv.parsec.www.plist" &&
-      ! -e "$HOME/Library/Caches/tv.parsec.www" ]]; then
-    pass "Parsec user data" "removed"
-else
-    fail \
-        "Parsec user data" \
-        "retired remnants remain" \
-        "Run modules/12-cleanup.sh."
+        check_optional_app "$label" "${app_paths[@]}"
+    done
 fi
 
 if [[ "$PROFILE" == "developer" ]]; then
-    section "Developer Environment"
-
-    check_command node "Node.js"
-    check_command python3 "Python"
-    check_command cmake "CMake"
-    check_command pkg-config "pkg-config"
+    section "Developer Toolchain"
 
     if command -v rustc >/dev/null 2>&1; then
         pass "Rust" "$(rustc --version)"
@@ -369,7 +450,9 @@ if [[ "$PROFILE" == "developer" ]]; then
     fi
 
     if command -v cargo-tauri >/dev/null 2>&1; then
-        pass "Tauri CLI" "$(cargo-tauri --version 2>/dev/null || echo installed)"
+        pass \
+            "Tauri CLI" \
+            "$(cargo-tauri --version 2>/dev/null || echo installed)"
     elif command -v cargo >/dev/null 2>&1 &&
          cargo tauri --version >/dev/null 2>&1; then
         pass "Tauri CLI" "$(cargo tauri --version)"
@@ -379,33 +462,38 @@ if [[ "$PROFILE" == "developer" ]]; then
             "not installed" \
             "Install the Tauri CLI if ChatGPT-Left75 development is required."
     fi
+fi
 
-    section "Developer / Extended Applications"
+section "Profile-independent Applications"
 
-    check_optional_app \
-        "Wireshark" \
-        "/Applications/Wireshark.app"
+check_app \
+    "FileZilla" \
+    "/Applications/FileZilla.app"
 
-    check_optional_app \
-        "Raspberry Pi Imager" \
-        "/Applications/Raspberry Pi Imager.app"
+check_app \
+    "ChatGPT-Left75" \
+    "/Applications/chatgpt-left75.app" \
+    "/Applications/ChatGPT-Left75.app"
 
-    check_optional_app \
-        "Balena Etcher" \
-        "/Applications/balenaEtcher.app" \
-        "/Applications/BalenaEtcher.app"
+section "Retired Applications"
 
-    check_optional_app \
-        "HandBrake" \
-        "/Applications/HandBrake.app"
+if [[ ! -d "/Applications/Parsec.app" ]]; then
+    pass "Parsec" "removed"
+else
+    fail \
+        "Parsec" \
+        "retired application still installed" \
+        "Run modules/12-cleanup.sh."
+fi
 
-    check_optional_app \
-        "MKVToolNix" \
-        "/Applications/MKVToolNix.app"
-
-    check_optional_app \
-        "MakeMKV" \
-        "/Applications/MakeMKV.app"
+if [[ ! -e "$HOME/Library/Preferences/tv.parsec.www.plist" &&
+      ! -e "$HOME/Library/Caches/tv.parsec.www" ]]; then
+    pass "Parsec user data" "removed"
+else
+    fail \
+        "Parsec user data" \
+        "retired remnants remain" \
+        "Run modules/12-cleanup.sh."
 fi
 
 section "macOS Preferences"
@@ -500,35 +588,39 @@ if (( ${#warning_guidance[@]} > 0 ||
 
     section "Warnings & Actions"
 
-    for item in "${warning_guidance[@]}"; do
-        IFS='|' read -r item_label item_detail item_action <<< "$item"
+    if (( ${#warning_guidance[@]} > 0 )); then
+        for item in "${warning_guidance[@]}"; do
+            IFS='|' read -r item_label item_detail item_action <<< "$item"
 
-        status_warn
-        printf ' %s\n' "$item_label"
-        printf '       %s\n' "$item_detail"
-        printf '       Review: %s\n' "$item_action"
-
-        {
-            printf '[WARN] %s\n' "$item_label"
+            status_warn
+            printf ' %s\n' "$item_label"
             printf '       %s\n' "$item_detail"
             printf '       Review: %s\n' "$item_action"
-        } >> "$REPORT_FILE"
-    done
 
-    for item in "${failure_guidance[@]}"; do
-        IFS='|' read -r item_label item_detail item_action <<< "$item"
+            {
+                printf '[WARN] %s\n' "$item_label"
+                printf '       %s\n' "$item_detail"
+                printf '       Review: %s\n' "$item_action"
+            } >> "$REPORT_FILE"
+        done
+    fi
 
-        status_fail
-        printf ' %s\n' "$item_label"
-        printf '       %s\n' "$item_detail"
-        printf '       Action: %s\n' "$item_action"
+    if (( ${#failure_guidance[@]} > 0 )); then
+        for item in "${failure_guidance[@]}"; do
+            IFS='|' read -r item_label item_detail item_action <<< "$item"
 
-        {
-            printf '[FAIL] %s\n' "$item_label"
+            status_fail
+            printf ' %s\n' "$item_label"
             printf '       %s\n' "$item_detail"
             printf '       Action: %s\n' "$item_action"
-        } >> "$REPORT_FILE"
-    done
+
+            {
+                printf '[FAIL] %s\n' "$item_label"
+                printf '       %s\n' "$item_detail"
+                printf '       Action: %s\n' "$item_action"
+            } >> "$REPORT_FILE"
+        done
+    fi
 fi
 
 section "Verification Result"

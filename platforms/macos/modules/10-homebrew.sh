@@ -90,7 +90,6 @@ cask_app_path() {
         balenaetcher)             printf '/Applications/balenaEtcher.app\n' ;;
         private-internet-access)  printf '/Applications/Private Internet Access.app\n' ;;
         handbrake-app)            printf '/Applications/HandBrake.app\n' ;;
-        makemkv)                  printf '/Applications/MakeMKV.app\n' ;;
         *)                        printf '\n' ;;
     esac
 }

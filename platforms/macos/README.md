@@ -47,6 +47,13 @@ by the standard Homebrew profile.
 - jq
 - gh
 
+## Developer profile
+
+The developer profile extends standard with Python, CMake, pkg-config, Node,
+Wireshark, Balena Etcher, Private Internet Access, HandBrake, Raspberry Pi
+Imager, Rust, and Tauri. Node uses the compatibility-managed official Intel
+binary rather than Homebrew on this Monterey host.
+
 ## Custom application
 
 - ChatGPT-Left75
@@ -57,6 +64,7 @@ by the standard Homebrew profile.
 ./bootstrap.sh --profile standard --dry-run
 ./bootstrap.sh --profile standard --verify-only
 ./bootstrap.sh --profile standard
+./bootstrap.sh --profile developer --verify-only
 ```
 
 The unified implementation has passed native Monterey dry-run, reconciliation,
@@ -64,7 +72,7 @@ idempotency, verification, syntax, ShellCheck, and 72-column presentation
 validation. Runtime artifacts remain under ignored `reports/` and `backups/`
 locations.
 
-This describes the validated unified standard profile based on standalone
-commit `a75d2cc`. Standalone `macbook-bootstrap/main` later advanced to
-`732e6ce` with developer-profile validation; those newer compatibility and
-verification changes are pending deliberate unified integration.
+The standard-profile validation above was originally based on standalone
+commit `a75d2cc`. Developer-profile source from standalone commit `732e6ce` is
+now synchronized exactly into the unified tree. Native unified developer dry-
+run, verification, reconciliation, and idempotency checks remain pending.

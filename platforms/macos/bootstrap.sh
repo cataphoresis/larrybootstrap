@@ -107,12 +107,12 @@ printf 'Arch:    %s\n' "$(uname -m)"
 printf 'Started: %s\n' "$(date)"
 [[ "$MACBOOK_DRY_RUN" == "1" ]] && printf 'Mode:    DRY RUN — no machine-state changes\n'
 
+export MACBOOK_PROFILE="$PROFILE"
+
 if [[ "$VERIFY_ONLY" == true ]]; then
     run_module "90-verify.sh"
     exit 0
 fi
-
-export MACBOOK_PROFILE="$PROFILE"
 
 MODULES=(
     "00-preflight.sh"

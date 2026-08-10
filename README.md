@@ -116,11 +116,10 @@ machine or conventional VM. Windows Sandbox was evaluated and rejected for
 this purpose because its Windows 10 image does not support the required AppX
 and networking-driver installers reliably.
 
-`common/platform-baselines.json` records macOS standard-profile baseline
-`a75d2cc`. Standalone `macbook-bootstrap/main` has since advanced to `732e6ce`
-with completed developer-profile validation. That newer developer behavior is
-not yet synchronized into the unified macOS tree and requires a deliberate
-reviewed integration.
+`common/platform-baselines.json` records synchronized macOS developer-profile
+source `732e6ce`. Its five implementation/profile files match the standalone
+commit exactly. Native execution through the unified root remains required
+before that developer integration is accepted as a release milestone.
 
 ## Packaging releases
 
@@ -143,8 +142,8 @@ Current packaging state:
 3. macOS — native implementation validated; standalone launcher packaging is
    still future work.
 
-The next integration task is reviewing standalone macOS developer commit
-`732e6ce` against the unified macOS tree. The next release gate remains an exact
+The next integration task is native unified developer-profile validation on the
+known Monterey installation. The next clean-install gate remains an exact
 Windows standard-profile installation on a separate physical machine or full
 VM, followed by idempotency and final verification. Do not retire the
 standalone recovery repositories before both tasks pass.

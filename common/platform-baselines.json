@@ -5,7 +5,7 @@
   },
   "macos": {
     "repository": "cataphoresis/macbook-bootstrap",
-    "commit": "a75d2cc"
+    "commit": "732e6cef91d0f651f99af6e92061794055277b7b"
   },
   "linux": {
     "repository": "cataphoresis/linuxbook-bootstrap",

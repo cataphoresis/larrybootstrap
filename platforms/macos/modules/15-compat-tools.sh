@@ -11,6 +11,8 @@ REPORT_DIR="$ROOT_DIR/reports"
 TIMESTAMP="$(date '+%Y-%m-%d_%H-%M-%S')"
 REPORT_FILE="$REPORT_DIR/compat-tools-$TIMESTAMP.txt"
 
+PROFILE="${MACBOOK_PROFILE:-standard}"
+PROFILE_FILE="$ROOT_DIR/profiles/$PROFILE.conf"
 MACBOOK_DRY_RUN="${MACBOOK_DRY_RUN:-0}"
 
 if [[ "$MACBOOK_DRY_RUN" == "1" ]]; then
@@ -77,6 +79,11 @@ ffprobe_version() {
 
 ytdlp_version() {
     yt-dlp --version 2>/dev/null |
+        head -n 1
+}
+
+node_version() {
+    node --version 2>/dev/null |
         head -n 1
 }
 
@@ -200,8 +207,114 @@ install_ytdlp() {
     rm -f "$tmp_file"
 }
 
+install_node() {
+    local node_release="v22.23.2"
+    local node_archive="node-v22.23.2-darwin-x64.tar.gz"
+    local node_sha256="58e99022c2ff89395576cc7fd4d98cea24bb68081475d5f88b801ee8729fb026"
+    local node_url
+    local tmp_dir
+    local archive_path
+    local source_dir
+    local install_root="/usr/local/lib/nodejs"
+    local install_dir="$install_root/node-v22.23.2-darwin-x64"
+    local executable
+
+    node_url="https://nodejs.org/download/release/$node_release/$node_archive"
+    tmp_dir="$(mktemp -d)"
+    archive_path="$tmp_dir/$node_archive"
+    source_dir="$tmp_dir/node-v22.23.2-darwin-x64"
+
+    trap 'rm -rf "$tmp_dir"' RETURN
+
+    if ! curl --fail --location "$node_url" --output "$archive_path"; then
+        report_status fail "node" "download failed"
+        failed_count=$((failed_count + 1))
+        return
+    fi
+
+    if ! printf '%s  %s\n' "$node_sha256" "$archive_path" |
+        shasum -a 256 --check --status
+    then
+        report_status fail "node" "checksum verification failed"
+        failed_count=$((failed_count + 1))
+        return
+    fi
+
+    if ! tar -xzf "$archive_path" -C "$tmp_dir"; then
+        report_status fail "node" "archive extraction failed"
+        failed_count=$((failed_count + 1))
+        return
+    fi
+
+    if ! file "$source_dir/bin/node" |
+        grep -q 'Mach-O 64-bit executable x86_64'
+    then
+        report_status fail "node" "unexpected binary architecture"
+        failed_count=$((failed_count + 1))
+        return
+    fi
+
+    if ! "$source_dir/bin/node" --version >/dev/null 2>&1; then
+        report_status fail "node" "downloaded binary failed execution"
+        failed_count=$((failed_count + 1))
+        return
+    fi
+
+    if [[ -e "$install_dir" ]]; then
+        report_status fail "node" "target install directory already exists"
+        failed_count=$((failed_count + 1))
+        return
+    fi
+
+    if ! sudo mkdir -p "$install_root" ||
+       ! sudo cp -R "$source_dir" "$install_dir"
+    then
+        report_status fail "node" "installation failed"
+        failed_count=$((failed_count + 1))
+        return
+    fi
+
+    for executable in node npm npx corepack; do
+        if ! sudo ln -sfn             "$install_dir/bin/$executable"             "/usr/local/bin/$executable"
+        then
+            report_status fail "node" "command linking failed"
+            failed_count=$((failed_count + 1))
+            return
+        fi
+    done
+
+    report_status ok "node" "$("$install_dir/bin/node" --version)"
+    installed_count=$((installed_count + 1))
+}
+
+report_status info "Profile" "$PROFILE"
+
+if [[ ! -f "$PROFILE_FILE" ]]; then
+    report_status fail "Profile" "unknown profile: $PROFILE"
+    exit 1
+fi
+
+# shellcheck disable=SC1090
+source "$PROFILE_FILE"
+manual_formula_requested() {
+    local requested="$1"
+    local formula
+
+    if ! declare -p MANUAL_FORMULAE >/dev/null 2>&1; then
+        return 1
+    fi
+
+    for formula in "${MANUAL_FORMULAE[@]}"; do
+        if [[ "$formula" == "$requested" ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
 section "Compatibility-managed Tools"
 
+if manual_formula_requested ffmpeg; then
 if command -v ffmpeg >/dev/null 2>&1; then
     report_status ok "ffmpeg" "$(ffmpeg_version)"
     present_count=$((present_count + 1))
@@ -224,6 +337,9 @@ elif command -v ffmpeg >/dev/null 2>&1; then
     )
 fi
 
+fi
+
+if manual_formula_requested yt-dlp; then
 if command -v yt-dlp >/dev/null 2>&1; then
     report_status ok "yt-dlp" "$(ytdlp_version)"
     present_count=$((present_count + 1))
@@ -233,6 +349,22 @@ else
     else
         larry_stage "Install standalone yt-dlp"
         install_ytdlp
+    fi
+fi
+
+fi
+
+if manual_formula_requested node; then
+    if command -v node >/dev/null 2>&1; then
+        report_status ok "node" "$(node_version)"
+        present_count=$((present_count + 1))
+    else
+        if [[ "$MACBOOK_DRY_RUN" == "1" ]]; then
+            report_status info "node" "would install official Node 22 binary"
+        else
+            larry_stage "Install official Node.js 22 LTS"
+            install_node
+        fi
     fi
 fi
 
