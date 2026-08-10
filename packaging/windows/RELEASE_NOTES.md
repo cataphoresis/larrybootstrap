@@ -16,6 +16,7 @@ This is the first packaged Windows release of the BBS-inspired LarryLauncher fro
 ## Known boundaries
 
 - PowerShell 7 is required.
+- WinGet through Microsoft App Installer is required.
 - This archive targets Windows only.
 - Linux and macOS launcher packages will be delivered as later incremental releases.
 - The package does not change the architecture of the separate Raspberry Pi `Larry` repository.

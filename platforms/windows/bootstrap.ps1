@@ -98,6 +98,18 @@ try {
 
             throw "$($Stage.Name) failed with exit code $ModuleExitCode."
         }
+
+        if ($Stage.File -eq "10-winget.ps1" -and -not $DryRun) {
+            $MachinePath = [Environment]::GetEnvironmentVariable(
+                "Path",
+                "Machine"
+            )
+            $UserPath = [Environment]::GetEnvironmentVariable(
+                "Path",
+                "User"
+            )
+            $env:Path = "$MachinePath;$UserPath"
+        }
     }
 }
 finally {

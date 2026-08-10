@@ -6,6 +6,7 @@ This archive contains the tested Windows LarryLauncher and every repository comp
 
 - Windows 10 or Windows 11
 - PowerShell 7 (`pwsh.exe`)
+- WinGet through Microsoft App Installer
 - internet access for installation operations
 - administrator approval only when an individual installation or setting requires it
 

@@ -1,6 +1,7 @@
 # Windows Bootstrap Package Manifest
 # id|display|required
 
+Git.Git|Git|true
 Mozilla.Firefox|Firefox|true
 eloston.ungoogled-chromium|Chromium|false
 Microsoft.VisualStudioCode|Visual Studio Code|true

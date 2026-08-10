@@ -45,9 +45,10 @@ Write-Section "Windows Package Installation"
 
 Write-InfoLine "Profile" $Profile
 Write-InfoLine "Manifest" $ManifestPath
+$SystemVolume = Get-SystemVolumeInfo
 Write-InfoLine "Free space" (
     "{0:N1} GB" -f (
-        (Get-Volume -DriveLetter $env:SystemDrive.TrimEnd(":")).SizeRemaining /
+        $SystemVolume.SizeRemaining /
         1GB
     )
 )

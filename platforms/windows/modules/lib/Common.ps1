@@ -278,6 +278,34 @@ function Test-ApplicationPath {
     return $null
 }
 
+function Get-SystemVolumeInfo {
+    [CmdletBinding()]
+    param()
+
+    $DriveLetter = $env:SystemDrive.TrimEnd(":")
+
+    try {
+        $Volume = Get-Volume `
+            -DriveLetter $DriveLetter `
+            -ErrorAction Stop
+
+        return [pscustomobject]@{
+            DriveLetter   = $DriveLetter
+            Size          = $Volume.Size
+            SizeRemaining = $Volume.SizeRemaining
+        }
+    }
+    catch {
+        $Drive = [IO.DriveInfo]::new("$DriveLetter`:\")
+
+        return [pscustomobject]@{
+            DriveLetter   = $DriveLetter
+            Size          = $Drive.TotalSize
+            SizeRemaining = $Drive.AvailableFreeSpace
+        }
+    }
+}
+
 function Get-WingetPackage {
     param(
         [Parameter(Mandatory)]
@@ -421,8 +449,22 @@ function Install-WinGetPackage {
         "--accept-source-agreements"
     )
 
-    & winget @Arguments | Out-Host
-    $ExitCode = $LASTEXITCODE
+    $MaximumAttempts = if ($Package.Required) { 2 } else { 1 }
+    $ExitCode = 1
+
+    for ($Attempt = 1; $Attempt -le $MaximumAttempts; $Attempt++) {
+        & winget @Arguments | Out-Host
+        $ExitCode = $LASTEXITCODE
+
+        if ($ExitCode -eq 0) {
+            break
+        }
+
+        if ($Attempt -lt $MaximumAttempts) {
+            Write-Warn $Package.DisplayName `
+                "install attempt $Attempt failed; retrying"
+        }
+    }
 
     if ($ExitCode -eq 0) {
 

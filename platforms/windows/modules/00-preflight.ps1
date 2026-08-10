@@ -133,7 +133,7 @@ if (Test-CommandAvailable "git") {
     Record-OK "Git" ((git --version) -join " ")
 }
 else {
-    Record-Fail "Git" "command not found"
+    Record-Warn "Git" "not found; the WinGet stage will install it"
 }
 
 if (Test-CommandAvailable "pwsh") {
@@ -168,8 +168,7 @@ else {
 
 Write-Section "Storage"
 
-$SystemDriveLetter = $env:SystemDrive.TrimEnd(":")
-$SystemVolume = Get-Volume -DriveLetter $SystemDriveLetter
+$SystemVolume = Get-SystemVolumeInfo
 $FreeGB = [math]::Round($SystemVolume.SizeRemaining / 1GB, 1)
 $TotalGB = [math]::Round($SystemVolume.Size / 1GB, 1)
 
