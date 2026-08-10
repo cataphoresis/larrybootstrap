@@ -50,6 +50,39 @@ Passing an explicit install action is intended for scripts and runs immediately.
 Set `LARRY_ANIMATE=1` to enable the short connection effect in an interactive
 terminal; redirected and unattended output remains delay-free.
 
+## Mandatory cross-OS handoff preflight
+
+Before editing code on any operating system:
+
+1. Confirm the working directory, repository root, `origin` URL, and branch.
+2. Inspect the working tree and preserve all existing changes.
+3. Fetch GitHub and inspect local/remote divergence.
+4. Bring the checkout fully current before writing code.
+5. Stop if the checkout is stale, conflicted, dirty unexpectedly, or belongs
+   to the wrong repository.
+6. Before switching operating systems, commit and push all approved work.
+7. Verify that local `HEAD` equals `origin/main` after synchronization.
+
+Never bypass divergence with a force-push, destructive reset, or blind pull.
+Use fast-forward-only synchronization when the working tree is clean and the
+local branch has no unique commits:
+
+```bash
+pwd
+git rev-parse --show-toplevel
+git remote get-url origin
+git status --short --branch
+git fetch origin
+git log --oneline --decorate --graph --left-right HEAD...origin/main
+git pull --ff-only
+git status --short --branch
+git rev-parse HEAD
+git rev-parse origin/main
+```
+
+If local and remote histories have diverged, inspect both histories and their
+file-level differences before choosing a rebase or merge.
+
 ## Usage
 
 Windows, from PowerShell 7:
