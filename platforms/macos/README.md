@@ -63,3 +63,8 @@ The unified implementation has passed native Monterey dry-run, reconciliation,
 idempotency, verification, syntax, ShellCheck, and 72-column presentation
 validation. Runtime artifacts remain under ignored `reports/` and `backups/`
 locations.
+
+This describes the validated unified standard profile based on standalone
+commit `a75d2cc`. Standalone `macbook-bootstrap/main` later advanced to
+`732e6ce` with developer-profile validation; those newer compatibility and
+verification changes are pending deliberate unified integration.
