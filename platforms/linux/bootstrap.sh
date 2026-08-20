@@ -71,9 +71,12 @@ case "$MODE" in
         configure_package_defaults
         install_full_packages
         configure_mac_keyboard_compatibility
+        configure_xfce_desktop
         configure_flatpak
         install_heroic
         install_vscode
+        configure_vscode_codex
+        install_codex_cli
         install_1password
         install_spotify
         install_rpi_imager

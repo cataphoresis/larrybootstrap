@@ -54,6 +54,12 @@ case "$action" in
     copy)
         if [[ "$window_class" == *xfce4-terminal* ]]; then
             xdotool key ctrl+shift+c
+        elif [[ "$window_class" == *\"code\"* ||
+                "$window_class" == *\"code-oss\"* ]]; then
+            # VS Code handles this through context-aware bindings below. In an
+            # integrated terminal it copies only selected text and never sends
+            # Ctrl+C (SIGINT) to Codex.
+            xdotool key ctrl+shift+c
         else
             xdotool key ctrl+c
         fi
@@ -61,6 +67,11 @@ case "$action" in
     paste)
         if [[ "$window_class" == *xfce4-terminal* ]]; then
             xdotool key ctrl+shift+v
+        elif [[ "$window_class" == *\"code\"* ||
+                "$window_class" == *\"code-oss\"* ]]; then
+            # Shift+Insert asks VS Code or its integrated terminal to paste
+            # text instead of forwarding Ctrl+V to Codex's image handler.
+            xdotool key shift+Insert
         else
             xdotool key ctrl+v
         fi
@@ -188,6 +199,294 @@ EOF
     else
         echo "xbindkeys will start at the next XFCE login."
     fi
+}
+
+download_verified_file() {
+    local url="$1"
+    local destination="$2"
+    local expected_sha256="$3"
+
+    if [[ -f "$destination" ]] &&
+       printf '%s  %s\n' "$expected_sha256" "$destination" |
+           sha256sum --check --status; then
+        echo "Using verified cache: $destination"
+        return 0
+    fi
+
+    if [[ -f "$destination" ]]; then
+        warning "Cached download failed checksum validation: $destination"
+        rm -f "$destination"
+    fi
+
+    curl --fail --location --retry 3 "$url" --output "$destination" || return 1
+
+    printf '%s  %s\n' "$expected_sha256" "$destination" |
+        sha256sum --check --status
+}
+
+xfconf_set() {
+    local channel="$1"
+    local property="$2"
+    local type="$3"
+    local value="$4"
+
+    xfconf-query -c "$channel" -p "$property" -s "$value" 2>/dev/null ||
+        xfconf-query -c "$channel" -p "$property" -n -t "$type" -s "$value"
+}
+
+configure_xfce_desktop() {
+    if ! is_macbook_xfce_profile; then
+        echo "MacBook9,1 with XFCE not detected; skipping XFCE appearance."
+        return
+    fi
+
+    section "Configuring XFCE appearance"
+
+    local theme_version="2025-08-17"
+    local icon_version="2025-02-15"
+    local theme_archive="$DOWNLOAD_DIR/qogir-theme-$theme_version.tar.gz"
+    local icon_archive="$DOWNLOAD_DIR/qogir-icons-$icon_version.tar.gz"
+    local extract_dir
+    local gtk_css="$HOME/.config/gtk-3.0/gtk.css"
+    local css_temp
+    local theme_marker="$HOME/.themes/.larrybootstrap-qogir-version"
+    local icon_marker="$HOME/.local/share/icons/.larrybootstrap-qogir-version"
+    local panel_config="$HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-panel.xml"
+
+    mkdir -p "$DOWNLOAD_DIR" "$HOME/.themes" "$HOME/.local/share/icons"
+    mkdir -p "$(dirname "$gtk_css")"
+
+    download_verified_file \
+        "https://github.com/vinceliuice/Qogir-theme/archive/refs/tags/$theme_version.tar.gz" \
+        "$theme_archive" \
+        "cc7a1a6f7449571251bbfd338e3e671254ba93bee41c5b997bf5a6626faaae8f" || {
+        failure "Could not download the verified Qogir GTK theme"
+        return
+    }
+
+    download_verified_file \
+        "https://github.com/vinceliuice/Qogir-icon-theme/archive/refs/tags/$icon_version.tar.gz" \
+        "$icon_archive" \
+        "b0d07cad5601e0341a53a62df0ed111823b75fc38741d435486620a59fb239ee" || {
+        failure "Could not download the verified Qogir icon theme"
+        return
+    }
+
+    extract_dir="$(mktemp -d)"
+
+    if [[ ! -f "$theme_marker" ]] ||
+       [[ "$(< "$theme_marker")" != "$theme_version" ]]; then
+        tar -xzf "$theme_archive" -C "$extract_dir"
+
+        if ! bash "$extract_dir/Qogir-theme-$theme_version/install.sh" \
+            --dest "$HOME/.themes" --theme default --color light; then
+            rm -rf "$extract_dir"
+        failure "Could not install the Qogir-Light GTK theme"
+            return
+        fi
+
+        printf '%s\n' "$theme_version" > "$theme_marker"
+    else
+        echo "Qogir-Light $theme_version is already installed."
+    fi
+
+    if [[ ! -f "$icon_marker" ]] ||
+       [[ "$(< "$icon_marker")" != "$icon_version" ]]; then
+        tar -xzf "$icon_archive" -C "$extract_dir"
+
+        if ! bash "$extract_dir/Qogir-icon-theme-$icon_version/install.sh" \
+            --dest "$HOME/.local/share/icons" --theme default --color standard; then
+            rm -rf "$extract_dir"
+            failure "Could not install the Qogir icon theme"
+            return
+        fi
+
+        printf '%s\n' "$icon_version" > "$icon_marker"
+    else
+        echo "Qogir icons $icon_version are already installed."
+    fi
+
+    rm -rf "$extract_dir"
+
+    css_temp="$(mktemp)"
+    if [[ -f "$gtk_css" ]]; then
+        awk '
+            /^\/\* BEGIN LarryBootstrap XFCE appearance \*\/$/ { managed=1; next }
+            /^\/\* END LarryBootstrap XFCE appearance \*\/$/ { managed=0; next }
+            !managed { print }
+        ' "$gtk_css" > "$css_temp"
+    fi
+
+    if [[ -s "$css_temp" ]]; then
+        printf '\n' >> "$css_temp"
+    fi
+
+    cat >> "$css_temp" <<'EOF'
+/* BEGIN LarryBootstrap XFCE appearance */
+/* Adapted from LinuxScoop's Whisker Menu dark CSS, OpenDesktop 1732225. */
+.xfce4-panel.panel {
+  background-color: #32343d;
+  font-weight: normal;
+  text-shadow: none;
+  -gtk-icon-shadow: none;
+}
+
+.xfce4-panel.panel button.flat {
+  color: #e6ebef;
+  border: 0;
+  border-radius: 4px;
+  background-color: rgba(50, 52, 61, 0.95);
+}
+
+.xfce4-panel.panel button.flat:hover {
+  background-color: #494c59;
+}
+
+#whiskermenu-window {
+  color: #e6ebef;
+  background-color: rgba(50, 52, 61, 0.96);
+  border-radius: 10px 10px 0 0;
+}
+
+#whiskermenu-window entry {
+  color: #e6ebef;
+  background-color: rgba(0, 0, 0, 0.25);
+}
+
+#whiskermenu-window button,
+#whiskermenu-window treeview {
+  color: #e6ebef;
+  background-color: transparent;
+  border: 0;
+  border-radius: 5px;
+}
+
+#whiskermenu-window button:hover,
+#whiskermenu-window button:focus,
+#whiskermenu-window treeview:selected {
+  color: #ffffff;
+  background-color: #5294e2;
+}
+/* END LarryBootstrap XFCE appearance */
+EOF
+    mv "$css_temp" "$gtk_css"
+
+    if [[ -f "$panel_config" &&
+          ! -f "$panel_config.larrybootstrap-backup" ]]; then
+        cp -p "$panel_config" "$panel_config.larrybootstrap-backup"
+        success "Backed up the original XFCE panel configuration"
+    fi
+
+    if ! is_current_xfce_graphical_session; then
+        warning "XFCE assets installed; log into XFCE to apply panel settings"
+        return
+    fi
+
+    xfconf_set xsettings /Net/ThemeName string Qogir-Light
+    xfconf_set xsettings /Net/IconThemeName string Qogir
+    xfconf_set xsettings /Gtk/FontName string "Inter 10"
+    xfconf_set xfwm4 /general/theme string Qogir-Light
+
+    xfconf-query -c xfce4-panel -p /panels/panel-2 -r -R 2>/dev/null || true
+    xfconf-query -c xfce4-panel -p /panels -t int -s 1 -a
+    xfconf_set xfce4-panel /panels/panel-1/position string "p=10;x=0;y=0"
+    xfconf_set xfce4-panel /panels/panel-1/size uint 34
+    xfconf_set xfce4-panel /plugins/plugin-1 string whiskermenu
+
+    xfce4-panel --restart
+    success "Applied Qogir-Light, Qogir icons, one bottom panel, and Whisker Menu"
+}
+
+configure_vscode_codex() {
+    section "Configuring Visual Studio Code for Codex"
+
+    if ! command -v code >/dev/null 2>&1; then
+        warning "Skipping VS Code configuration: code is unavailable"
+        return
+    fi
+
+    local user_dir="$HOME/.config/Code/User"
+    local settings="$user_dir/settings.json"
+    local keybindings="$user_dir/keybindings.json"
+    local temp
+
+    mkdir -p "$user_dir"
+
+    run_step "Install the official OpenAI Codex extension" \
+        code --install-extension openai.chatgpt --force
+
+    temp="$(mktemp)"
+    if ! jq '
+        . + {
+            "workbench.colorTheme": "Default Dark Modern",
+            "editor.fontFamily": "Fira Code, monospace",
+            "editor.fontLigatures": true,
+            "editor.fontSize": 14,
+            "terminal.integrated.fontFamily": "Fira Code",
+            "terminal.integrated.fontSize": 13,
+            "terminal.integrated.copyOnSelection": false
+        }
+    ' "${settings:-/dev/null}" > "$temp" 2>/dev/null; then
+        printf '{}\n' | jq '
+            . + {
+                "workbench.colorTheme": "Default Dark Modern",
+                "editor.fontFamily": "Fira Code, monospace",
+                "editor.fontLigatures": true,
+                "editor.fontSize": 14,
+                "terminal.integrated.fontFamily": "Fira Code",
+                "terminal.integrated.fontSize": 13,
+                "terminal.integrated.copyOnSelection": false
+            }
+        ' > "$temp"
+    fi
+    mv "$temp" "$settings"
+
+    temp="$(mktemp)"
+    if [[ -f "$keybindings" ]] && jq -e 'type == "array"' "$keybindings" >/dev/null 2>&1; then
+        jq '
+            map(select(
+                (.command != "workbench.action.terminal.paste" or
+                 (.key != "ctrl+v" and .key != "ctrl+shift+v" and
+                  .key != "shift+insert")) and
+                (.key != "ctrl+shift+c" or
+                 (.command != "workbench.action.terminal.copySelection" and
+                  .command != "editor.action.clipboardCopyAction"))
+            )) +
+            [
+                {"key":"ctrl+shift+c","command":"workbench.action.terminal.copySelection","when":"terminalFocus"},
+                {"key":"ctrl+shift+c","command":"editor.action.clipboardCopyAction","when":"editorTextFocus"},
+                {"key":"ctrl+v","command":"workbench.action.terminal.paste","when":"terminalFocus"},
+                {"key":"ctrl+shift+v","command":"workbench.action.terminal.paste","when":"terminalFocus"},
+                {"key":"shift+insert","command":"workbench.action.terminal.paste","when":"terminalFocus"}
+            ]
+        ' "$keybindings" > "$temp"
+    else
+        cat > "$temp" <<'EOF'
+[
+  {"key":"ctrl+shift+c","command":"workbench.action.terminal.copySelection","when":"terminalFocus"},
+  {"key":"ctrl+shift+c","command":"editor.action.clipboardCopyAction","when":"editorTextFocus"},
+  {"key":"ctrl+v","command":"workbench.action.terminal.paste","when":"terminalFocus"},
+  {"key":"ctrl+shift+v","command":"workbench.action.terminal.paste","when":"terminalFocus"},
+  {"key":"shift+insert","command":"workbench.action.terminal.paste","when":"terminalFocus"}
+]
+EOF
+    fi
+    mv "$temp" "$keybindings"
+
+    success "Configured VS Code terminal copy and paste for Codex"
+}
+
+install_codex_cli() {
+    section "OpenAI Codex CLI"
+
+    if ! command -v node >/dev/null 2>&1 ||
+       ! command -v npm >/dev/null 2>&1; then
+        failure "Cannot install Codex CLI: Node.js and npm are required"
+        return
+    fi
+
+    run_step "Install the official OpenAI Codex CLI" \
+        sudo npm install --global --no-audit --no-fund @openai/codex@latest
 }
 
 configure_flatpak() {
@@ -468,6 +767,27 @@ show_application_status() {
         report_app_row "VS Code" ok "${version:--}" "deb"
     else
         report_app_row "VS Code" fail "-" "-"
+    fi
+
+    if command -v node >/dev/null 2>&1; then
+        version="$(node --version 2>/dev/null)"
+        report_app_row "Node.js" ok "${version:--}" "deb"
+    else
+        report_app_row "Node.js" fail "-" "-"
+    fi
+
+    if command -v npm >/dev/null 2>&1; then
+        version="$(npm --version 2>/dev/null)"
+        report_app_row "npm" ok "${version:--}" "deb"
+    else
+        report_app_row "npm" fail "-" "-"
+    fi
+
+    if command -v codex >/dev/null 2>&1; then
+        version="$(codex --version 2>/dev/null | head -n1)"
+        report_app_row "Codex CLI" ok "${version:--}" "npm"
+    else
+        report_app_row "Codex CLI" fail "-" "-"
     fi
 
     if version="$(

@@ -29,6 +29,11 @@ CORE_PACKAGES=(
     xbindkeys
     xdotool
     x11-utils
+    gtk2-engines-murrine
+    sassc
+    fonts-inter
+    fonts-firacode
+    xfce4-whiskermenu-plugin
 )
 
 FULL_PACKAGES=(
@@ -48,6 +53,8 @@ FULL_PACKAGES=(
     python3-pip
     python3-venv
     pipx
+    nodejs
+    npm
 
     # Lightweight development and text editing
     geany

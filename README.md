@@ -111,6 +111,9 @@ The root launchers detect or enforce the current platform and delegate every
 option to the corresponding native bootstrap. Platform-specific READMEs
 document additional profiles, behavior, and recovery details.
 
+The current cross-session state and remaining validation steps are recorded in
+[`HANDOFF.md`](HANDOFF.md).
+
 Cross-platform application intent is reconciled deliberately after native
 platform behavior is imported and verified. The revisions recorded in
 `common/platform-baselines.json` are the source-of-truth checkpoints for this

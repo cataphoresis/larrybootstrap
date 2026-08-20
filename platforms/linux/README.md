@@ -13,6 +13,10 @@ Full workstation installation:
 
     ./bootstrap.sh full
 
+Run full installation from an interactive terminal so `sudo` can display its
+password prompt. Non-interactive command runners without a TTY fail during the
+sudo preflight by design.
+
 Capture a fresh system audit without installing anything:
 
     ./bootstrap.sh audit
@@ -36,6 +40,27 @@ The letter bindings use the validated X11 Super modifier and physical keycodes
 for this MacBook keyboard. Tab uses symbolic xbindkeys syntax so X11 resolves its
 keycode and the Shift modifier for the active keyboard map.
 
+In VS Code, Command+C emits Ctrl+Shift+C and uses context-aware bindings to copy
+selected terminal or editor text. With no terminal selection it is a no-op, so
+it cannot send Ctrl+C/SIGINT and end a Codex CLI session. Command+V emits
+Shift+Insert, and the integrated terminal binds Ctrl+V, Ctrl+Shift+V, and
+Shift+Insert to terminal text paste. This prevents a raw Ctrl+V from reaching
+Codex CLI's image-paste handler when pasting text.
+
+## XFCE appearance and VS Code
+
+Full mode installs the pinned Qogir-Light GTK theme and Qogir icon set from
+their upstream releases. It applies Inter as the desktop font, keeps one
+34-pixel panel at the bottom, replaces the Applications menu with Whisker Menu,
+and adds the transparent rounded dark Whisker styling from OpenDesktop item
+1732225. The original panel XML is retained as
+`xfce4-panel.xml.larrybootstrap-backup` before the first layout change.
+
+VS Code receives the official OpenAI Codex extension, Fira Code editor and
+terminal typography, and context-aware integrated-terminal copy/paste bindings.
+Full mode also installs Debian's Node.js and npm packages, then installs or
+updates the official `@openai/codex` CLI package globally with npm.
+
 ## Reports
 
 The newest report is available at:
@@ -49,7 +74,8 @@ ignored runtime directories.
 
 - Debian 13 package repair, updates, core/full package sets, and multiarch
 - Firefox, Chromium, VLC, Spotify, 1Password, Visual Studio Code, Geany,
-  Moonlight, Heroic, Steam, Android platform tools, and GitHub CLI
+  Moonlight, Heroic, Steam, Android platform tools, GitHub CLI, Node.js, npm,
+  and the official OpenAI Codex CLI
 - SSH client/server configuration and homelab/networking utilities
 - SSD TRIM, BOOTCAMP NTFS integration, and conservative APFS handling
 - installer cache validation, application version/source reporting, and
@@ -68,7 +94,11 @@ ignored runtime directories.
 
 ## Validation state
 
-The unified Linux implementation was validated natively on Debian 13 and
-published in commit `102f193` (`Finalize Linux bootstrap release`). The audit
-is read-only, a second full run is idempotent, and the standalone repository is
-not modified by unified integration work.
+The updated unified Linux full mode completed natively on Debian 13 on August
+20, 2026 with zero failures. The validated application summary reported Node.js
+`v20.19.2`, npm `9.2.0`, and Codex CLI `0.148.0`. The only warning was the
+intentional absence of an automatically generated user Ed25519 SSH key.
+
+Post-reboot validation in a fresh XFCE and VS Code session passed all managed
+Command+C and Command+V behaviors. The final audit completed with zero warnings
+and zero failures, including the live xbindkeys process check.
