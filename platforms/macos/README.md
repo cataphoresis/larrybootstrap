@@ -74,5 +74,8 @@ locations.
 
 The standard-profile validation above was originally based on standalone
 commit `a75d2cc`. Developer-profile source from standalone commit `732e6ce` is
-now synchronized exactly into the unified tree. Native unified developer dry-
-run, verification, reconciliation, and idempotency checks remain pending.
+synchronized exactly into the unified tree. The unified developer profile has
+now passed native Monterey dry-run, profile-aware preflight verification, full
+reconciliation, second-run idempotency, final verification, static checks, and
+72-column presentation validation. The standalone repository remains the
+unchanged recovery baseline.

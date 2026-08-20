@@ -154,8 +154,10 @@ and networking-driver installers reliably.
 
 `common/platform-baselines.json` records synchronized macOS developer-profile
 source `732e6ce`. Its five implementation/profile files match the standalone
-commit exactly. Native execution through the unified root remains required
-before that developer integration is accepted as a release milestone.
+commit exactly. Native unified developer-profile validation on the known
+Monterey installation is complete, including dry-run, profile-aware
+verification, reconciliation, second-run idempotency, final verification,
+static checks, and the 72-column presentation contract.
 
 ## Packaging releases
 
@@ -178,8 +180,9 @@ Current packaging state:
 3. macOS — native implementation validated; standalone launcher packaging is
    still future work.
 
-The next integration task is native unified developer-profile validation on the
-known Monterey installation. The next clean-install gate remains an exact
-Windows standard-profile installation on a separate physical machine or full
-VM, followed by idempotency and final verification. Do not retire the
-standalone recovery repositories before both tasks pass.
+The remaining release gate is an exact Windows standard-profile installation
+on a separate physical machine or conventional full VM, followed by a reboot,
+second-run idempotency, final verification, and packaged-launcher validation.
+Windows Sandbox is not an accepted substitute. Do not retire the standalone
+recovery repositories until that gate passes and retirement is approved
+explicitly.
