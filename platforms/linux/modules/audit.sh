@@ -125,5 +125,71 @@ capture_audit() {
     apt-get -o Debug::NoLocking=1 -s autoremove --purge 2>&1 |
         tee "$reports/autoremove-simulation.txt" >/dev/null || true
 
+    capture_mac_keyboard_audit "$reports"
+
     success "Created audit report: $(display_path "$reports")"
+}
+
+capture_mac_keyboard_audit() {
+    local reports="$1"
+    local report="$reports/mac-keyboard-compatibility.txt"
+    local helper
+    local command_name
+    local package
+    local binding
+
+    {
+        if ! is_macbook_xfce_profile; then
+            echo "NOT APPLICABLE: MacBook9,1 with XFCE was not detected."
+            return
+        fi
+
+        for command_name in xbindkeys xdotool xprop; do
+            if command -v "$command_name" >/dev/null 2>&1; then
+                echo "PASS: command available: $command_name"
+            else
+                echo "FAIL: command unavailable: $command_name"
+            fi
+        done
+
+        for package in xbindkeys xdotool x11-utils; do
+            if dpkg-query -W -f='${db:Status-Abbrev}' "$package" \
+                2>/dev/null | grep -q '^ii'; then
+                echo "PASS: package installed: $package"
+            else
+                echo "FAIL: package not installed: $package"
+            fi
+        done
+
+        for helper in mac-copy-paste mac-window-switch; do
+            if [[ -x "$HOME/.local/bin/$helper" ]]; then
+                echo "PASS: helper is executable: ~/.local/bin/$helper"
+            else
+                echo "FAIL: helper missing or not executable: ~/.local/bin/$helper"
+            fi
+        done
+
+        for binding in \
+            'm:0x40 + c:54' \
+            'm:0x40 + c:55' \
+            'm:0x40 + c:38' \
+            'Mod4 + Tab' \
+            'Shift + Mod4 + Tab'; do
+            if grep -Fq "$binding" "$HOME/.xbindkeysrc" 2>/dev/null; then
+                echo "PASS: xbindkeys binding present: $binding"
+            else
+                echo "FAIL: xbindkeys binding missing: $binding"
+            fi
+        done
+
+        if is_current_xfce_graphical_session; then
+            if pgrep -x -u "$(id -u)" xbindkeys >/dev/null 2>&1; then
+                echo "PASS: xbindkeys is running in the XFCE graphical session"
+            else
+                echo "FAIL: xbindkeys is not running in the XFCE graphical session"
+            fi
+        else
+            echo "INFO: xbindkeys process check skipped outside an XFCE graphical session"
+        fi
+    } > "$report"
 }

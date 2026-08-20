@@ -53,6 +53,7 @@ case "$MODE" in
         configure_multiarch
         apt_update_upgrade
         install_core_packages
+        configure_mac_keyboard_compatibility
         configure_ssh
         capture_audit
         ;;
@@ -69,6 +70,7 @@ case "$MODE" in
         install_core_packages
         configure_package_defaults
         install_full_packages
+        configure_mac_keyboard_compatibility
         configure_flatpak
         install_heroic
         install_vscode

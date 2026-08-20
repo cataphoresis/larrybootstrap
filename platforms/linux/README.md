@@ -17,6 +17,25 @@ Capture a fresh system audit without installing anything:
 
     ./bootstrap.sh audit
 
+## Mac-style keyboard shortcuts
+
+On the MacBook9,1 XFCE profile, the bootstrap installs and starts xbindkeys with
+the following X11 mappings:
+
+- Command+C copies.
+- Command+V pastes.
+- Command+A selects all.
+- Command+Tab activates the next visible application window on the current desktop.
+- Command+Shift+Tab activates the previous visible application window.
+
+Copy and paste are translated to Ctrl+Shift+C and Ctrl+Shift+V in
+`xfce4-terminal`; other applications receive Ctrl+C and Ctrl+V. Window switching
+uses direct xdotool window activation instead of XFWM's built-in Super+Tab.
+
+The letter bindings use the validated X11 Super modifier and physical keycodes
+for this MacBook keyboard. Tab uses symbolic xbindkeys syntax so X11 resolves its
+keycode and the Shift modifier for the active keyboard map.
+
 ## Reports
 
 The newest report is available at:

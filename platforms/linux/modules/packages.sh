@@ -26,6 +26,9 @@ CORE_PACKAGES=(
     lsof
     tmux
     screen
+    xbindkeys
+    xdotool
+    x11-utils
 )
 
 FULL_PACKAGES=(

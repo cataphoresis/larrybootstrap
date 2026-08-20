@@ -2,6 +2,194 @@
 
 DOWNLOAD_DIR="$HOME/Downloads/Linux-Installers"
 
+is_macbook_xfce_profile() {
+    local product_name=""
+    local desktop="${XDG_CURRENT_DESKTOP:-${DESKTOP_SESSION:-}}"
+
+    if [[ -r /sys/class/dmi/id/product_name ]]; then
+        read -r product_name < /sys/class/dmi/id/product_name
+    fi
+
+    [[ "$product_name" == "MacBook9,1" ]] || return 1
+
+    [[ "${desktop,,}" == *xfce* ]] || command -v xfce4-session >/dev/null 2>&1
+}
+
+is_current_xfce_graphical_session() {
+    local desktop="${XDG_CURRENT_DESKTOP:-${DESKTOP_SESSION:-}}"
+
+    [[ -n "${DISPLAY:-}" && "${desktop,,}" == *xfce* ]]
+}
+
+configure_mac_keyboard_compatibility() {
+    if ! is_macbook_xfce_profile; then
+        echo "MacBook9,1 with XFCE not detected; skipping Mac keyboard mappings."
+        return
+    fi
+
+    section "Configuring MacBook keyboard compatibility"
+
+    local bin_dir="$HOME/.local/bin"
+    local autostart_dir="$HOME/.config/autostart"
+    local xbindkeys_config="$HOME/.xbindkeysrc"
+    local config_temp
+
+    mkdir -p "$bin_dir" "$autostart_dir"
+
+    install -m 0755 /dev/stdin "$bin_dir/mac-copy-paste" <<'EOF'
+#!/usr/bin/env bash
+set -u
+
+action="${1:-}"
+window_id="$(xdotool getwindowfocus 2>/dev/null || true)"
+window_class="$(
+    xprop -id "$window_id" WM_CLASS 2>/dev/null |
+        tr '[:upper:]' '[:lower:]'
+)"
+
+xdotool keyup Super_L c v 2>/dev/null || true
+sleep 0.08
+
+case "$action" in
+    copy)
+        if [[ "$window_class" == *xfce4-terminal* ]]; then
+            xdotool key ctrl+shift+c
+        else
+            xdotool key ctrl+c
+        fi
+        ;;
+    paste)
+        if [[ "$window_class" == *xfce4-terminal* ]]; then
+            xdotool key ctrl+shift+v
+        else
+            xdotool key ctrl+v
+        fi
+        ;;
+    select-all)
+        xdotool key ctrl+a
+        ;;
+    *)
+        printf 'Usage: %s copy|paste|select-all\n' "$0" >&2
+        exit 2
+        ;;
+esac
+EOF
+
+    install -m 0755 /dev/stdin "$bin_dir/mac-window-switch" <<'EOF'
+#!/usr/bin/env bash
+set -u
+
+direction="${1:-next}"
+
+xdotool keyup Super_L Super_R Shift_L Shift_R Tab 2>/dev/null || true
+sleep 0.05
+
+desktop="$(xdotool get_desktop)"
+active="$(xdotool getactivewindow 2>/dev/null || true)"
+
+mapfile -t windows < <(
+    xdotool search --onlyvisible --desktop "$desktop" "" 2>/dev/null
+)
+
+if (( ${#windows[@]} < 2 )); then
+    exit 0
+fi
+
+current=-1
+
+for i in "${!windows[@]}"; do
+    if [[ "${windows[$i]}" == "$active" ]]; then
+        current="$i"
+        break
+    fi
+done
+
+case "$direction" in
+    next)
+        if (( current < 0 )); then
+            target=0
+        else
+            target=$(( (current + 1) % ${#windows[@]} ))
+        fi
+        ;;
+    previous)
+        if (( current < 0 )); then
+            target=$((${#windows[@]} - 1))
+        else
+            target=$(( (current - 1 + ${#windows[@]}) % ${#windows[@]} ))
+        fi
+        ;;
+    *)
+        printf 'Usage: %s next|previous\n' "$0" >&2
+        exit 2
+        ;;
+esac
+
+xdotool windowactivate --sync "${windows[$target]}"
+EOF
+
+    config_temp="$(mktemp)"
+
+    if [[ -f "$xbindkeys_config" ]]; then
+        awk '
+            /^# BEGIN LarryBootstrap Mac keyboard bindings$/ { managed=1; next }
+            /^# END LarryBootstrap Mac keyboard bindings$/ { managed=0; next }
+            !managed { print }
+        ' "$xbindkeys_config" > "$config_temp"
+    fi
+
+    if [[ -s "$config_temp" ]]; then
+        printf '\n' >> "$config_temp"
+    fi
+
+    cat >> "$config_temp" <<EOF
+# BEGIN LarryBootstrap Mac keyboard bindings
+# Physical Command is Super_L (keycode 133) on the MacBook9,1 X11 keyboard.
+# The validated letter keycodes avoid layout-dependent symbolic ambiguity.
+"$bin_dir/mac-copy-paste copy"
+    m:0x40 + c:54
+"$bin_dir/mac-copy-paste paste"
+    m:0x40 + c:55
+"$bin_dir/mac-copy-paste select-all"
+    m:0x40 + c:38
+# Symbolic Tab bindings let X11 resolve the Tab keycode and Shift modifier.
+"$bin_dir/mac-window-switch next"
+    Mod4 + Tab
+"$bin_dir/mac-window-switch previous"
+    Shift + Mod4 + Tab
+# END LarryBootstrap Mac keyboard bindings
+EOF
+
+    mv "$config_temp" "$xbindkeys_config"
+    chmod 0644 "$xbindkeys_config"
+
+    install -m 0644 /dev/stdin "$autostart_dir/xbindkeys.desktop" <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=xbindkeys
+Comment=LarryBootstrap MacBook keyboard compatibility
+Exec=/usr/bin/xbindkeys --nodaemon
+OnlyShowIn=XFCE;
+Terminal=false
+StartupNotify=false
+X-GNOME-Autostart-enabled=true
+EOF
+
+    success "Installed MacBook copy, paste, select-all, and window-switch mappings"
+
+    if is_current_xfce_graphical_session; then
+        pkill -x -u "$(id -u)" xbindkeys 2>/dev/null || true
+
+        if xbindkeys; then
+            success "Reloaded xbindkeys for the current XFCE session"
+        else
+            warning "Could not start xbindkeys; it will retry at the next XFCE login"
+        fi
+    else
+        echo "xbindkeys will start at the next XFCE login."
+    fi
+}
+
 configure_flatpak() {
     section "Configuring Flatpak"
 
