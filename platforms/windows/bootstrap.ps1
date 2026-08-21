@@ -13,6 +13,12 @@ $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $PwshPath = (Get-Command pwsh.exe -ErrorAction Stop).Source
 . "$Root\modules\lib\Common.ps1"
 
+# Each module runs in a fresh PowerShell process. Refresh PATH at entry so a
+# standalone verification sees tools installed by an earlier apply process.
+$MachinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
+$UserPath = [Environment]::GetEnvironmentVariable("Path", "User")
+$env:Path = "$MachinePath;$UserPath"
+
 $ArtifactRetentionCount = 3
 $DryRunStageFailures = 0
 $DeferredStatePath = if ($DryRun -or $VerifyOnly) {
