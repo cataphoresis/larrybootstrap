@@ -17,7 +17,15 @@ $PwshPath = (Get-Command pwsh.exe -ErrorAction Stop).Source
 # standalone verification sees tools installed by an earlier apply process.
 $MachinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
 $UserPath = [Environment]::GetEnvironmentVariable("Path", "User")
-$env:Path = "$MachinePath;$UserPath"
+$ExpectedToolPaths = @(
+    (Join-Path $env:ProgramFiles "nodejs"),
+    (Join-Path $env:APPDATA "npm"),
+    (Join-Path $env:LOCALAPPDATA "Programs\Microsoft VS Code\bin")
+)
+$env:Path = @(
+    @($MachinePath, $UserPath) -join ";" -split ";"
+    $ExpectedToolPaths | Where-Object { Test-Path -LiteralPath $_ }
+) | Where-Object { $_ } | Select-Object -Unique | Join-String -Separator ";"
 
 $ArtifactRetentionCount = 3
 $DryRunStageFailures = 0
