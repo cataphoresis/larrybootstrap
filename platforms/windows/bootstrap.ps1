@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("standard", "homelab", "developer")]
+    [ValidateSet("standard")]
     [string]$Profile = "standard",
 
     [switch]$VerifyOnly,
@@ -15,6 +15,14 @@ $PwshPath = (Get-Command pwsh.exe -ErrorAction Stop).Source
 
 $ArtifactRetentionCount = 3
 $DryRunStageFailures = 0
+$DeferredStatePath = if ($DryRun -or $VerifyOnly) {
+    $null
+}
+else {
+    Join-Path `
+        ([IO.Path]::GetTempPath()) `
+        ("larrybootstrap-deferred-" + [guid]::NewGuid().ToString("N") + ".json")
+}
 
 Write-Host ""
 Write-LarryBorder
@@ -55,10 +63,17 @@ if ($VerifyOnly) {
     exit $VerifyExitCode
 }
 
+$WinGetArguments = @("-Profile", $Profile)
+$VerificationArguments = @("-Profile", $Profile)
+if ($DeferredStatePath) {
+    $WinGetArguments += @("-DeferredStatePath", $DeferredStatePath)
+    $VerificationArguments += @("-DeferredStatePath", $DeferredStatePath)
+}
+
 $Pipeline = @(
     [pscustomobject]@{ Name = "Preflight";        File = "00-preflight.ps1";        Arguments = @() },
     [pscustomobject]@{ Name = "Inventory";        File = "01-inventory.ps1";        Arguments = @() },
-    [pscustomobject]@{ Name = "WinGet packages";  File = "10-winget.ps1";          Arguments = @("-Profile", $Profile) },
+    [pscustomobject]@{ Name = "WinGet packages";  File = "10-winget.ps1";          Arguments = $WinGetArguments },
     [pscustomobject]@{ Name = "Retired cleanup";  File = "12-cleanup.ps1";         Arguments = @() },
     [pscustomobject]@{ Name = "Filesystem compat"; File = "15-filesystem-compat.ps1"; Arguments = @() },
     [pscustomobject]@{ Name = "Windows settings"; File = "20-settings.ps1";        Arguments = @() },
@@ -66,7 +81,7 @@ $Pipeline = @(
     [pscustomobject]@{ Name = "Larry PowerShell"; File = "40-powershell.ps1";      Arguments = @() },
     [pscustomobject]@{ Name = "Browser setup";     File = "50-browser.ps1";         Arguments = @() },
     [pscustomobject]@{ Name = "PowerToys setup";   File = "60-workspaces.ps1";      Arguments = @() },
-    [pscustomobject]@{ Name = "Verification";     File = "90-verify.ps1";          Arguments = @("-Profile", $Profile) }
+    [pscustomobject]@{ Name = "Verification";     File = "90-verify.ps1";          Arguments = $VerificationArguments }
 )
 
 try {
@@ -113,6 +128,13 @@ try {
     }
 }
 finally {
+    if ($DeferredStatePath) {
+        Remove-Item `
+            -LiteralPath $DeferredStatePath `
+            -Force `
+            -ErrorAction SilentlyContinue
+    }
+
     Invoke-BootstrapArtifactRetention `
         -RootDirectory $Root `
         -KeepPerModule $ArtifactRetentionCount `

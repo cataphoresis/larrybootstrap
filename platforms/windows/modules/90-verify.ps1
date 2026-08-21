@@ -2,7 +2,9 @@ param(
     [ValidateSet("standard")]
     [string]$Profile = "standard",
 
-    [switch]$DryRun
+    [switch]$DryRun,
+
+    [string]$DeferredStatePath
 )
 
 Set-StrictMode -Version Latest
@@ -18,6 +20,22 @@ $Report = New-TimestampedReport -RootDirectory $Root -Prefix "verify" -DryRun:$D
 $Failures = 0
 $Warnings = 0
 $Passed = 0
+$DeferredPackageIds = @()
+
+if (
+    $DeferredStatePath -and
+    (Test-Path -LiteralPath $DeferredStatePath -PathType Leaf)
+) {
+    try {
+        $DeferredPackageIds = @(
+            Get-Content -LiteralPath $DeferredStatePath -Raw |
+                ConvertFrom-Json
+        )
+    }
+    catch {
+        $DeferredPackageIds = @()
+    }
+}
 
 function Add-ReportLine {
     param([AllowEmptyString()][string]$Text)
@@ -111,14 +129,28 @@ elseif (-not (Test-CommandAvailable "winget")) {
 }
 else {
     foreach ($Package in Get-PackageManifest -Path $PackageManifestPath) {
-        if (Test-WinGetPackageInstalled -Id $Package.Id) {
-            Record-OK $Package.DisplayName $Package.Id
-        }
-        elseif ($Package.Required) {
-            Record-Fail $Package.DisplayName "required package is not installed ($($Package.Id))"
-        }
-        else {
-            Record-Warn $Package.DisplayName "optional package is not installed ($($Package.Id))"
+        $Installed = Test-WinGetPackageInstalled -Id $Package.Id
+        $Disposition = Get-WinGetVerificationDisposition `
+            -Package $Package `
+            -Installed $Installed `
+            -DeferredPackageIds $DeferredPackageIds
+
+        switch ($Disposition) {
+            "Installed" {
+                Record-OK $Package.DisplayName $Package.Id
+            }
+            "Deferred" {
+                Record-Warn $Package.DisplayName `
+                    "required download deferred this run ($($Package.Id)); rerun bootstrap"
+            }
+            "RequiredMissing" {
+                Record-Fail $Package.DisplayName `
+                    "required package is not installed ($($Package.Id))"
+            }
+            "OptionalMissing" {
+                Record-Warn $Package.DisplayName `
+                    "optional package is not installed ($($Package.Id))"
+            }
         }
     }
 }

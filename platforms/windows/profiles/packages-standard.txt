@@ -1,13 +1,14 @@
 # Windows Bootstrap Package Manifest
-# id|display|required
+# id|display|required|context
 
 Git.Git|Git|true
+GitHub.cli|GitHub CLI|true
 Mozilla.Firefox|Firefox|true
 eloston.ungoogled-chromium|Chromium|false
 Microsoft.VisualStudioCode|Visual Studio Code|true
 Notepad++.Notepad++|Notepad++|true
 VideoLAN.VLC|VLC|true
-Spotify.Spotify|Spotify|true
+Spotify.Spotify|Spotify|true|user
 MoonlightGameStreamingProject.Moonlight|Moonlight|true
 AgileBits.1Password|1Password|true
 7zip.7zip|7-Zip|true

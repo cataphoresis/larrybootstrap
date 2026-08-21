@@ -58,6 +58,74 @@ function Save-Inventory {
     }
 }
 
+function Save-NativeInventory {
+    param(
+        [Parameter(Mandatory)][string]$Label,
+        [Parameter(Mandatory)][string]$FileName,
+        [Parameter(Mandatory)][string]$Executable,
+        [Parameter(Mandatory)][string[]]$Arguments,
+        [ValidateRange(1, 300)][int]$TimeoutSeconds = 30
+    )
+
+    $Path = Join-Path $BackupRoot $FileName
+    $StartInfo = [Diagnostics.ProcessStartInfo]::new()
+    $StartInfo.FileName = $Executable
+    $StartInfo.UseShellExecute = $false
+    $StartInfo.CreateNoWindow = $true
+    $StartInfo.RedirectStandardOutput = $true
+    $StartInfo.RedirectStandardError = $true
+
+    foreach ($Argument in $Arguments) {
+        [void]$StartInfo.ArgumentList.Add($Argument)
+    }
+
+    $Process = [Diagnostics.Process]::new()
+    $Process.StartInfo = $StartInfo
+
+    try {
+        if (-not $Process.Start()) {
+            throw "$Executable did not start."
+        }
+
+        $StandardOutput = $Process.StandardOutput.ReadToEndAsync()
+        $StandardError = $Process.StandardError.ReadToEndAsync()
+
+        if (-not $Process.WaitForExit($TimeoutSeconds * 1000)) {
+            try { $Process.Kill($true) } catch { }
+            throw "$Executable timed out after $TimeoutSeconds seconds."
+        }
+
+        $Output = $StandardOutput.GetAwaiter().GetResult()
+        $ErrorOutput = $StandardError.GetAwaiter().GetResult()
+
+        if ($Process.ExitCode -ne 0) {
+            $Detail = $ErrorOutput.Trim()
+            if ([string]::IsNullOrWhiteSpace($Detail)) {
+                $Detail = "exit code $($Process.ExitCode)"
+            }
+            throw "$Executable failed: $Detail"
+        }
+
+        if ($DryRun) {
+            Write-OK $Label "inspected; file output suppressed"
+            Add-ReportLine ("[ OK ] {0,-28} inspected" -f $Label)
+        }
+        else {
+            [IO.File]::WriteAllText($Path, $Output, [Text.UTF8Encoding]::new($false))
+            Write-OK $Label $Path
+            Add-ReportLine ("[ OK ] {0,-28} {1}" -f $Label, $Path)
+        }
+    }
+    catch {
+        $script:Warnings++
+        Write-Warn $Label $_.Exception.Message
+        Add-ReportLine ("[WARN] {0,-28} {1}" -f $Label, $_.Exception.Message)
+    }
+    finally {
+        $Process.Dispose()
+    }
+}
+
 Add-ReportLine "Windows Bootstrap Inventory"
 Add-ReportLine "==========================="
 Add-ReportLine "Run date: $(Get-Date)"
@@ -122,9 +190,20 @@ Save-Inventory "Partitions" {
 
 Write-Section "Installed Applications"
 
-Save-Inventory "WinGet packages" {
-    winget list
-} "winget-packages.txt"
+$WinGetCommand = Get-Command winget.exe -ErrorAction SilentlyContinue
+if ($WinGetCommand) {
+    Save-NativeInventory `
+        -Label "WinGet packages" `
+        -FileName "winget-packages.txt" `
+        -Executable $WinGetCommand.Source `
+        -Arguments @("list", "--disable-interactivity") `
+        -TimeoutSeconds 30
+}
+else {
+    $Warnings++
+    Write-Warn "WinGet packages" "winget.exe was not found"
+    Add-ReportLine "[WARN] WinGet packages command not found"
+}
 
 Save-Inventory "Installed packages" {
     Get-Package |

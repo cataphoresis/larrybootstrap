@@ -2,7 +2,9 @@ param(
     [ValidateSet("standard")]
     [string]$Profile = "standard",
 
-    [switch]$DryRun
+    [switch]$DryRun,
+
+    [string]$DeferredStatePath
 )
 
 Set-StrictMode -Version Latest
@@ -24,6 +26,8 @@ $Installed = 0
 $Present = 0
 $RequiredFailures = 0
 $OptionalFailures = 0
+$DeferredFailures = 0
+$DeferredPackageIds = [Collections.Generic.List[string]]::new()
 
 function Add-ReportLine {
     param(
@@ -134,7 +138,16 @@ foreach ($Package in $Packages) {
         continue
     }
 
-    if ($Package.Required) {
+    if ($script:LastWinGetInstallRecoverable) {
+        Add-ReportLine (
+            "[WARN] {0,-28} deferred download failure ({1})" -f
+            $Package.DisplayName,
+            $Package.Id
+        )
+        $DeferredFailures++
+        $DeferredPackageIds.Add($Package.Id)
+    }
+    elseif ($Package.Required) {
         Add-ReportLine (
             "[FAIL] {0,-28} required installation failed ({1})" -f
             $Package.DisplayName,
@@ -159,17 +172,30 @@ Write-Section "WinGet Result"
 Write-InfoLine "Already present" $Present.ToString()
 Write-InfoLine $(if ($DryRun) { "Would install" } else { "Newly installed" }) $Installed.ToString()
 Write-InfoLine "Optional failures" $OptionalFailures.ToString()
+Write-InfoLine "Deferred downloads" $DeferredFailures.ToString()
 Write-InfoLine "Required failures" $RequiredFailures.ToString()
 
 Add-ReportLine ""
 Add-ReportLine "Already present: $Present"
 Add-ReportLine "Newly installed: $Installed"
 Add-ReportLine "Optional failures: $OptionalFailures"
+Add-ReportLine "Deferred downloads: $DeferredFailures"
 Add-ReportLine "Required failures: $RequiredFailures"
 
-if ($RequiredFailures -eq 0) {
+if ($DeferredStatePath -and -not $DryRun) {
+    @($DeferredPackageIds) |
+        ConvertTo-Json |
+        Set-Content -LiteralPath $DeferredStatePath -Encoding UTF8
+}
+
+if ($RequiredFailures -eq 0 -and $DeferredFailures -eq 0) {
     Write-OK "Overall status" "PASS"
     Add-ReportLine "Overall status: PASS"
+}
+elseif ($RequiredFailures -eq 0) {
+    Write-Warn "Overall status" `
+        "DEFERRED - rerun bootstrap to retry required downloads"
+    Add-ReportLine "Overall status: DEFERRED"
 }
 else {
     Write-Fail "Overall status" "INCOMPLETE"

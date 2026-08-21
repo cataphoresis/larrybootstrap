@@ -2,14 +2,14 @@ param(
     [ValidateSet("Menu", "Install", "Verify", "Audit", "Reports", "Exit")]
     [string]$Action = "Menu",
 
-    [ValidateSet("standard", "homelab", "developer")]
+    [ValidateSet("standard")]
     [string]$Profile = "standard"
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-if (-not $IsWindows) {
+if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
     throw "launcher.ps1 is the Windows LarryLauncher. Use ./launcher.sh on macOS or Linux."
 }
 
@@ -17,7 +17,14 @@ $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Bootstrap = Join-Path $Root "bootstrap.ps1"
 $AuditModule = Join-Path $Root "platforms\windows\modules\80-audit.ps1"
 $Reports = Join-Path $Root "platforms\windows\reports"
-$Pwsh = (Get-Command pwsh.exe -ErrorAction Stop).Source
+$PwshCommand = Get-Command pwsh.exe -ErrorAction SilentlyContinue
+if (-not $PwshCommand) {
+    throw (
+        "PowerShell 7 is not installed. On a blank machine, run " +
+        "bootstrap.ps1 from an elevated Windows PowerShell prompt first."
+    )
+}
+$Pwsh = $PwshCommand.Source
 
 function Get-PrimaryIPv4Address {
     try {

@@ -11,12 +11,13 @@ Recreates Matthew's lean, remote-first Windows environment.
 - Firefox as primary browser
 - Chromium as secondary browser
 - Cross-platform application consistency
-- Thin-client use: remote access, SSH, web tools, and homelab administration
+- Thin-client use: remote access, SSH, and web tools
 
 ## Implemented standard applications
 
 - PowerShell 7
 - Git
+- GitHub CLI
 - Firefox
 - Chromium
 - Visual Studio Code
@@ -30,10 +31,29 @@ Recreates Matthew's lean, remote-first Windows environment.
 - 7-Zip
 - PowerToys
 
-PowerShell 7 and WinGet through Microsoft App Installer are prerequisites.
-Git is installed by the standard WinGet stage when absent. Required package
-installs are retried once after a transient failure, and the parent process
-refreshes PATH before later configuration and verification stages.
+Stage 0 installs PowerShell 7 from the official PowerShell GitHub release when
+needed, then uses Microsoft's WinGet repair module to establish a functional
+App Installer. The Windows PowerShell Stage 0 process hands off to a new
+elevated PowerShell 7 console and exits. Git and GitHub CLI are installed by
+the standard WinGet stage when absent. Required package installs are retried
+once after a transient failure, and the parent process refreshes PATH before
+later configuration and verification stages.
+
+Inventory captures WinGet through a timeout-bounded native process. Native
+stdout is never piped through PowerShell formatting or `Out-File`, avoiding a
+known Windows 10 hang while still allowing inventory to continue on failure.
+
+The elevated bootstrap remains the machine-level orchestrator. Packages marked
+with `user` context in the manifest run through a temporary interactive task
+with `RunLevel Limited`, so installers such as Spotify receive the logged-in
+user's normal token. The helper refuses to invoke WinGet unless it verifies
+that its own token is non-elevated.
+Required downloads receive two delayed retries. DNS, network, and download
+failures are reported as deferred with a rerun instruction, allowing remaining
+configuration stages to finish. A per-run temporary state file lets final
+verification keep those exact deferred package IDs as warnings; any other
+missing required application remains a failure. VLC additionally retries from
+Debian's VideoLAN mirror, dynamically selecting the current signed win64 MSI.
 
 Parsec is retired from the Larry ecosystem. The cleanup stage removes the
 Parsec app, its separately registered virtual display/USB drivers, and known
@@ -51,14 +71,15 @@ depend on the final application positions and monitor arrangement.
 
 ## Usage
 
-Only the `standard` profile currently has complete Windows package and direct-
-install manifests. `homelab` and `developer` are reserved launcher/root choices
-and are not release-ready on Windows.
+Windows supports the `standard` profile. The `homelab` profile remains
+Linux-only.
 
-Run the complete standard bootstrap from PowerShell 7:
+Run the complete standard bootstrap from an elevated stock Windows PowerShell
+prompt without changing persistent execution policy:
 
 ```powershell
-.\bootstrap.ps1 -Profile standard
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+    -File .\bootstrap.ps1 -Profile standard
 ```
 
 Run the read-only system checks without reinstalling or reconfiguring anything:
@@ -78,6 +99,9 @@ Dry-run mode performs inspection and prints planned actions to stdout. It does
 not install or remove packages, refresh package sources, download files, create
 temporary files, write reports or backups, change registry or configuration
 values, restart processes, or prune old artifacts.
+
+If PowerShell 7 or WinGet is unavailable, dry-run reports which prerequisite
+would be established and stops because the normal pipeline cannot yet run.
 
 The known Windows 10 host validates at 36 passed checks, one understood warning
 for a WSL build without `wsl --mount`, and zero failures. Exact clean-machine

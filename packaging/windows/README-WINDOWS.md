@@ -5,35 +5,30 @@ This archive contains the tested Windows LarryLauncher and every repository comp
 ## Requirements
 
 - Windows 10 or Windows 11
-- PowerShell 7 (`pwsh.exe`)
-- WinGet through Microsoft App Installer
 - internet access for installation operations
-- administrator approval only when an individual installation or setting requires it
+- an elevated shell for first-run prerequisite installation or repair
 
 ## Start the launcher
 
 1. Extract the entire ZIP to a normal folder. Do not run the script from inside the ZIP preview.
-2. Open PowerShell 7 in the extracted folder.
+2. Open Windows PowerShell as Administrator in the extracted folder.
 3. Run:
 
 ```powershell
-Set-ExecutionPolicy -Scope Process Bypass
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+    -File .\bootstrap.ps1 -Profile standard
+```
+
+The bypass applies only to that process. Stage 0 establishes PowerShell 7 and
+WinGet without requiring Git or GitHub CLI. After the first bootstrap, run the
+interactive launcher from PowerShell 7:
+
+```powershell
 .\launcher.ps1
 ```
 
-The execution-policy change applies only to that PowerShell process. You can also run a noninteractive verification:
-
-```powershell
-.\launcher.ps1 -Action Verify -Profile standard
-```
-
-Use the `standard` profile. The launcher currently exposes `homelab` and
-`developer` as reserved choices, but the packaged Windows runtime does not yet
-contain their package/direct-install manifests; install or verification with
-those profiles is not release-ready.
-
-WinGet is a prerequisite, not something this archive bootstraps. Git is managed
-by the standard profile and may be absent before the first installation.
+Windows supports the `standard` profile. Git and GitHub CLI are managed by its
+normal WinGet package stage and may both be absent before the first run.
 
 ## Verify the download
 

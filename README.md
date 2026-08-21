@@ -85,13 +85,21 @@ file-level differences before choosing a rebase or merge.
 
 ## Usage
 
-Windows, from PowerShell 7:
+Windows, from an elevated stock Windows PowerShell prompt:
 
 ```powershell
-.\bootstrap.ps1 -Profile standard
-.\bootstrap.ps1 -Profile standard -VerifyOnly
-.\bootstrap.ps1 -Profile standard -DryRun
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+    -File .\bootstrap.ps1 -Profile standard
 ```
+
+The process-scoped execution-policy bypass does not change the machine or user
+execution policy. Stage 0 establishes PowerShell 7 and a functional WinGet,
+then opens a new elevated PowerShell 7 console for the normal Windows pipeline
+and closes the original Windows PowerShell process. Git and GitHub CLI remain
+ordinary WinGet-stage packages. `-DryRun` never installs or repairs
+prerequisites; when they are missing it reports the required actions and stops
+before the normal dry run. Once prerequisites exist, `-VerifyOnly` and
+`-DryRun` are forwarded unchanged.
 
 macOS:
 

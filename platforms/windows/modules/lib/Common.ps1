@@ -360,16 +360,22 @@ function Get-PackageManifest {
 
         $Fields = $TrimmedLine.Split("|")
 
-        if ($Fields.Count -ne 3) {
+        if ($Fields.Count -notin @(3, 4)) {
             throw (
                 "Invalid manifest entry at line ${LineNumber}: " +
-                "expected id|display|required"
+                "expected id|display|required[|context]"
             )
         }
 
         $Id = $Fields[0].Trim()
         $DisplayName = $Fields[1].Trim()
         $RequiredText = $Fields[2].Trim()
+        $Context = if ($Fields.Count -eq 4) {
+            $Fields[3].Trim().ToLowerInvariant()
+        }
+        else {
+            "elevated"
+        }
 
         if ([string]::IsNullOrWhiteSpace($Id)) {
             throw "Missing package ID at line $LineNumber."
@@ -388,11 +394,16 @@ function Get-PackageManifest {
             )
         }
 
+        if ($Context -notin @("elevated", "user")) {
+            throw "Invalid context at line ${LineNumber}: $Context"
+        }
+
         [pscustomobject]@{
             Id         = $Id
             DisplayName = $DisplayName
-            Required   = $Required
-            LineNumber = $LineNumber
+            Required    = $Required
+            Context     = $Context
+            LineNumber  = $LineNumber
         }
     }
 }
@@ -417,71 +428,245 @@ function Test-WinGetPackageInstalled {
     }
 }
 
+function Get-WinGetVerificationDisposition {
+    param(
+        [Parameter(Mandatory)][pscustomobject]$Package,
+        [Parameter(Mandatory)][bool]$Installed,
+        [string[]]$DeferredPackageIds = @()
+    )
+
+    if ($Installed) { return "Installed" }
+    if ($Package.Id -in $DeferredPackageIds) { return "Deferred" }
+    if ($Package.Required) { return "RequiredMissing" }
+    return "OptionalMissing"
+}
+
+function Invoke-WinGetPackageAsInteractiveUser {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$PackageId)
+
+    $Helper = Join-Path $PSScriptRoot "..\Invoke-UserWingetInstall.ps1"
+    $Token = [guid]::NewGuid().ToString("N")
+    $TaskName = "LarryBootstrap-UserInstall-$Token"
+    $ResultPath = Join-Path $env:TEMP "$TaskName.result"
+    $LogPath = Join-Path $env:TEMP "$TaskName.log"
+    $UserId = "$env:USERDOMAIN\$env:USERNAME"
+    $PwshPath = (Get-Command pwsh.exe -ErrorAction Stop).Source
+    $ActionArguments = @(
+        "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass",
+        "-File", ('"{0}"' -f $Helper),
+        "-PackageId", ('"{0}"' -f $PackageId),
+        "-ResultPath", ('"{0}"' -f $ResultPath),
+        "-LogPath", ('"{0}"' -f $LogPath)
+    ) -join " "
+
+    try {
+        $Action = New-ScheduledTaskAction `
+            -Execute $PwshPath `
+            -Argument $ActionArguments
+        $Principal = New-ScheduledTaskPrincipal `
+            -UserId $UserId `
+            -LogonType Interactive `
+            -RunLevel Limited
+        $Settings = New-ScheduledTaskSettingsSet `
+            -ExecutionTimeLimit (New-TimeSpan -Minutes 30) `
+            -AllowStartIfOnBatteries `
+            -DontStopIfGoingOnBatteries
+
+        Register-ScheduledTask `
+            -TaskName $TaskName `
+            -Action $Action `
+            -Principal $Principal `
+            -Settings $Settings `
+            -Force | Out-Null
+        Start-ScheduledTask -TaskName $TaskName
+
+        $Deadline = (Get-Date).AddMinutes(30)
+        while (-not (Test-Path -LiteralPath $ResultPath -PathType Leaf)) {
+            if ((Get-Date) -ge $Deadline) {
+                throw "Per-user WinGet install timed out after 30 minutes."
+            }
+            Start-Sleep -Seconds 2
+        }
+
+        $ExitCode = [int](Get-Content -LiteralPath $ResultPath -Raw)
+        $Output = if (Test-Path -LiteralPath $LogPath -PathType Leaf) {
+            @(Get-Content -LiteralPath $LogPath)
+        }
+        else { @() }
+
+        $ContextVerified = $Output -contains "[CONTEXT] Elevated=False"
+        return [pscustomobject]@{
+            ExitCode       = $ExitCode
+            Output         = $Output
+            ContextVerified = $ContextVerified
+        }
+    }
+    finally {
+        Unregister-ScheduledTask `
+            -TaskName $TaskName `
+            -Confirm:$false `
+            -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $ResultPath, $LogPath -Force `
+            -ErrorAction SilentlyContinue
+    }
+}
+
+function Install-VlcFromDebianMirror {
+    [CmdletBinding()]
+    param()
+
+    $Mirror = "https://cdimage.debian.org/mirror/videolan.org/vlc/last/win64/"
+    $TemporaryRoot = Join-Path `
+        ([IO.Path]::GetTempPath()) `
+        ("larrybootstrap-vlc-" + [guid]::NewGuid().ToString("N"))
+
+    New-Item -ItemType Directory -Path $TemporaryRoot | Out-Null
+    try {
+        Write-InfoLine "VLC fallback" "checking Debian's VideoLAN mirror"
+        $Index = Invoke-WebRequest -Uri $Mirror -UseBasicParsing
+        $AssetName = @(
+            $Index.Links |
+                ForEach-Object href |
+                Where-Object { $_ -match '^vlc-[0-9.]+-win64\.msi$' }
+        ) | Select-Object -First 1
+
+        if (-not $AssetName) {
+            $Match = [regex]::Match(
+                $Index.Content,
+                'href=["''](?<Asset>vlc-[0-9.]+-win64\.msi)["'']'
+            )
+            if ($Match.Success) { $AssetName = $Match.Groups["Asset"].Value }
+        }
+
+        if (-not $AssetName) {
+            throw "No current win64 MSI was listed by the mirror."
+        }
+
+        $InstallerPath = Join-Path $TemporaryRoot $AssetName
+        Write-InfoLine "VLC fallback" "downloading $AssetName"
+        Invoke-WebRequest `
+            -Uri ([uri]::new([uri]$Mirror, $AssetName).AbsoluteUri) `
+            -OutFile $InstallerPath `
+            -UseBasicParsing
+
+        $Signature = Get-AuthenticodeSignature -FilePath $InstallerPath
+        $Signer = [string]$Signature.SignerCertificate.Subject
+        if ($Signature.Status -ne "Valid" -or $Signer -notmatch "VideoLAN") {
+            throw "VLC MSI did not have a valid VideoLAN signature."
+        }
+
+        $Process = Start-Process `
+            -FilePath "$env:SystemRoot\System32\msiexec.exe" `
+            -ArgumentList @("/i", ('"{0}"' -f $InstallerPath), "/quiet", "/norestart") `
+            -Wait `
+            -PassThru
+        if ($Process.ExitCode -notin @(0, 3010)) {
+            throw "VLC MSI failed with exit code $($Process.ExitCode)."
+        }
+
+        Write-OK "VLC fallback" "installed from Debian's VideoLAN mirror"
+        return $true
+    }
+    catch {
+        Write-Warn "VLC fallback" $_.Exception.Message
+        return $false
+    }
+    finally {
+        Remove-Item `
+            -LiteralPath $TemporaryRoot `
+            -Recurse `
+            -Force `
+            -ErrorAction SilentlyContinue
+    }
+}
+
 function Install-WinGetPackage {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)]
-        [pscustomobject]$Package,
-
+        [Parameter(Mandatory)][pscustomobject]$Package,
         [switch]$DryRun
     )
 
+    $script:LastWinGetInstallRecoverable = $false
+
     if (Test-WinGetPackageInstalled $Package.Id) {
-
         Write-OK $Package.DisplayName "already installed"
-
         return $true
     }
 
     if ($DryRun) {
-        Write-InfoLine $Package.DisplayName "would install ($($Package.Id))"
+        Write-InfoLine $Package.DisplayName `
+            "would install in $($Package.Context) context ($($Package.Id))"
         return $true
     }
 
-    Write-InfoLine $Package.DisplayName "installing..."
+    Write-InfoLine $Package.DisplayName `
+        "installing in $($Package.Context) context..."
 
     $Arguments = @(
-        "install"
-        "--id"
-        $Package.Id
-        "--exact"
-        "--accept-package-agreements"
-        "--accept-source-agreements"
+        "install", "--id", $Package.Id, "--exact",
+        "--accept-package-agreements", "--accept-source-agreements",
+        "--disable-interactivity"
     )
-
-    $MaximumAttempts = if ($Package.Required) { 2 } else { 1 }
+    $MaximumAttempts = if ($Package.Required) { 3 } else { 1 }
     $ExitCode = 1
+    $Output = @()
 
     for ($Attempt = 1; $Attempt -le $MaximumAttempts; $Attempt++) {
-        & winget @Arguments | Out-Host
-        $ExitCode = $LASTEXITCODE
-
-        if ($ExitCode -eq 0) {
-            break
+        if ($Package.Context -eq "user") {
+            Write-InfoLine $Package.DisplayName `
+                "launching unelevated as $env:USERNAME"
+            $Result = Invoke-WinGetPackageAsInteractiveUser -PackageId $Package.Id
+            $ExitCode = $Result.ExitCode
+            $Output = @($Result.Output)
+            if (-not $Result.ContextVerified) {
+                $ExitCode = 740
+                $Output += "User-token helper did not verify Elevated=False."
+            }
         }
+        else {
+            $Output = @(& winget @Arguments 2>&1)
+            $ExitCode = $LASTEXITCODE
+        }
+        $Output | Out-Host
 
+        if ($ExitCode -eq 0) { break }
         if ($Attempt -lt $MaximumAttempts) {
+            $Delay = @(5, 15)[$Attempt - 1]
             Write-Warn $Package.DisplayName `
-                "install attempt $Attempt failed; retrying"
+                "attempt $Attempt failed; retrying in $Delay seconds"
+            Start-Sleep -Seconds $Delay
         }
     }
 
     if ($ExitCode -eq 0) {
-
         Write-OK $Package.DisplayName "installed"
-
         return $true
     }
 
-    if ($Package.Required) {
+    $FailureText = $Output -join " "
+    $script:LastWinGetInstallRecoverable = $FailureText -match `
+        "0x80072ee7|InternetOpenUrl\(\) failed|name resolution|network|download"
 
+    if (
+        $Package.Id -eq "VideoLAN.VLC" -and
+        $script:LastWinGetInstallRecoverable -and
+        (Install-VlcFromDebianMirror)
+    ) {
+        $script:LastWinGetInstallRecoverable = $false
+        return $true
+    }
+
+    if ($script:LastWinGetInstallRecoverable) {
+        Write-Warn $Package.DisplayName `
+            "download failed; rerun LarryBootstrap when the source is reachable"
+    }
+    elseif ($Package.Required) {
         Write-Fail $Package.DisplayName "installation failed"
-
     }
     else {
-
         Write-Warn $Package.DisplayName "optional package failed"
-
     }
 
     return $false

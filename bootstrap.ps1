@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("standard", "homelab", "developer")]
+    [ValidateSet("standard")]
     [string]$Profile = "standard",
 
     [switch]$VerifyOnly,
@@ -10,27 +10,19 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-if (-not $IsWindows) {
+if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
     throw "bootstrap.ps1 is the Windows launcher. Use ./bootstrap.sh on macOS or Linux."
 }
 
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
-$PlatformBootstrap = Join-Path $Root "platforms\windows\bootstrap.ps1"
+$StageZero = Join-Path $Root "platforms\windows\stage0.ps1"
 
-if (-not (Test-Path -LiteralPath $PlatformBootstrap -PathType Leaf)) {
-    throw "Windows platform bootstrap not found: $PlatformBootstrap"
+if (-not (Test-Path -LiteralPath $StageZero -PathType Leaf)) {
+    throw "Windows Stage 0 bootstrap not found: $StageZero"
 }
 
-$Arguments = @("-Profile", $Profile)
-
-if ($VerifyOnly) {
-    $Arguments += "-VerifyOnly"
-}
-
-if ($DryRun) {
-    $Arguments += "-DryRun"
-}
-
-$Pwsh = Get-Command pwsh.exe -ErrorAction Stop
-& $Pwsh.Source -NoLogo -NoProfile -File $PlatformBootstrap @Arguments
+& $StageZero `
+    -Profile $Profile `
+    -VerifyOnly:$VerifyOnly `
+    -DryRun:$DryRun
 exit $LASTEXITCODE
