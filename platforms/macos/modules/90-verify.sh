@@ -201,6 +201,50 @@ check_optional_app() {
     return 1
 }
 
+resolve_code_command() {
+    local candidate
+    local app_bin="Contents/Resources/app/bin/code"
+
+    if command -v code >/dev/null 2>&1; then
+        command -v code
+        return 0
+    fi
+
+    for candidate in \
+        "/Applications/Visual Studio Code.app/$app_bin" \
+        "$HOME/Applications/Visual Studio Code.app/$app_bin"
+    do
+        if [[ -x "$candidate" ]]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+resolve_codex_command() {
+    local candidate
+
+    if command -v codex >/dev/null 2>&1; then
+        command -v codex
+        return 0
+    fi
+
+    for candidate in \
+        "$HOME/.local/bin/codex" \
+        "/opt/homebrew/bin/codex" \
+        "/usr/local/bin/codex"
+    do
+        if [[ -x "$candidate" ]]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 read_default() {
     defaults read "$1" "$2" 2>/dev/null || echo unavailable
 }
@@ -403,6 +447,36 @@ for cask in "${CASKS[@]}"; do
 
     check_app "$label" "${app_paths[@]}"
 done
+
+section "Codex & Visual Studio Code"
+
+if codex_command="$(resolve_codex_command)"; then
+    pass "Codex CLI" \
+        "$("$codex_command" --version 2>/dev/null | head -n 1)"
+else
+    fail \
+        "Codex CLI" \
+        "command not found" \
+        "Run modules/18-codex.sh, then sign in with ChatGPT on first use."
+fi
+
+if code_command="$(resolve_code_command)"; then
+    if "$code_command" --list-extensions 2>/dev/null |
+        awk 'tolower($0) == "openai.chatgpt" { found=1 } END { exit !found }'
+    then
+        pass "Codex extension" "openai.chatgpt"
+    else
+        fail \
+            "Codex extension" \
+            "not installed" \
+            "Run modules/18-codex.sh, then open the Codex sidebar in VS Code."
+    fi
+else
+    fail \
+        "VS Code command" \
+        "command not found" \
+        "Install Visual Studio Code and rerun the Codex module."
+fi
 
 if declare -p MANUAL_APPS >/dev/null 2>&1; then
     section "Manual / Compatibility-managed Applications"

@@ -63,6 +63,7 @@ $Pipeline = @(
     [pscustomobject]@{ Name = "Filesystem compat"; File = "15-filesystem-compat.ps1"; Arguments = @() },
     [pscustomobject]@{ Name = "Windows settings"; File = "20-settings.ps1";        Arguments = @() },
     [pscustomobject]@{ Name = "Direct installs";  File = "30-direct-installs.ps1"; Arguments = @("-Profile", $Profile) },
+    [pscustomobject]@{ Name = "OpenAI Codex";     File = "35-codex.ps1";          Arguments = @() },
     [pscustomobject]@{ Name = "Larry PowerShell"; File = "40-powershell.ps1";      Arguments = @() },
     [pscustomobject]@{ Name = "Browser setup";     File = "50-browser.ps1";         Arguments = @() },
     [pscustomobject]@{ Name = "PowerToys setup";   File = "60-workspaces.ps1";      Arguments = @() },

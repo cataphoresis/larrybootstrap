@@ -219,6 +219,55 @@ else {
     }
 }
 
+Add-AuditSection "Codex and Visual Studio Code"
+Invoke-AuditCollection "Codex" {
+    $NodeCommand = Get-Command node.exe -ErrorAction SilentlyContinue
+    $NpmCommand = Get-NpmCommandPath
+    $CodexCommand = Get-CodexCommandPath
+    $CodeCommand = Get-VSCodeCommandPath
+
+    if ($NodeCommand) {
+        $Version = [string](& $NodeCommand.Source --version 2>$null |
+            Select-Object -First 1)
+        Record-AuditOK "Node.js" $Version
+    }
+    else {
+        Record-AuditWarn "Node.js" "command unavailable"
+    }
+
+    if ($NpmCommand) {
+        $Version = [string](& $NpmCommand --version 2>$null |
+            Select-Object -First 1)
+        Record-AuditOK "npm" $Version
+    }
+    else {
+        Record-AuditWarn "npm" "command unavailable"
+    }
+
+    if ($CodexCommand) {
+        $Version = [string](& $CodexCommand --version 2>$null |
+            Select-Object -First 1)
+        Record-AuditOK "Codex CLI" $Version
+    }
+    else {
+        Record-AuditWarn "Codex CLI" "command unavailable"
+    }
+
+    if ($CodeCommand) {
+        $Extensions = @(& $CodeCommand --list-extensions 2>$null)
+
+        if ($Extensions -contains "openai.chatgpt") {
+            Record-AuditOK "Codex extension" "openai.chatgpt"
+        }
+        else {
+            Record-AuditWarn "Codex extension" "not installed"
+        }
+    }
+    else {
+        Record-AuditWarn "VS Code command" "command unavailable"
+    }
+}
+
 Write-Section "Audit Result"
 Write-InfoLine "Warnings" $Warnings.ToString()
 Write-InfoLine "Collection errors" $CollectionErrors.ToString()

@@ -61,6 +61,10 @@ terminal typography, and context-aware integrated-terminal copy/paste bindings.
 Full mode also installs Debian's Node.js and npm packages, then installs or
 updates the official `@openai/codex` CLI package globally with npm.
 
+Authentication remains interactive. On first use, run `codex` and choose
+**Sign in with ChatGPT**. In VS Code, press Ctrl+Shift+P and run
+**Codex: Open Codex Sidebar**, then sign in with the same ChatGPT account.
+
 ## Reports
 
 The newest report is available at:

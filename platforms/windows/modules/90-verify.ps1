@@ -146,6 +146,63 @@ else {
     }
 }
 
+Write-Section "Codex and Visual Studio Code"
+
+$NodeCommand = Get-Command node.exe -ErrorAction SilentlyContinue
+$NpmCommand = Get-NpmCommandPath
+$CodexCommand = Get-CodexCommandPath
+$CodeCommand = Get-VSCodeCommandPath
+
+if ($NodeCommand) {
+    $NodeVersion = [string](& $NodeCommand.Source --version 2>$null |
+        Select-Object -First 1)
+    Record-OK "Node.js" $NodeVersion
+}
+else {
+    Record-Fail "Node.js" "command not found"
+}
+
+if ($NpmCommand) {
+    $NpmVersion = [string](& $NpmCommand --version 2>$null |
+        Select-Object -First 1)
+    Record-OK "npm" $NpmVersion
+
+    & $NpmCommand list --global --depth=0 "@openai/codex" `
+        *> $null
+    if ($LASTEXITCODE -eq 0) {
+        Record-OK "Codex package" "@openai/codex"
+    }
+    else {
+        Record-Fail "Codex package" "global npm package not found"
+    }
+}
+else {
+    Record-Fail "npm" "command not found"
+}
+
+if ($CodexCommand) {
+    $CodexVersion = [string](& $CodexCommand --version 2>$null |
+        Select-Object -First 1)
+    Record-OK "Codex CLI" $CodexVersion
+}
+else {
+    Record-Fail "Codex CLI" "command not found"
+}
+
+if ($CodeCommand) {
+    $Extensions = @(& $CodeCommand --list-extensions 2>$null)
+
+    if ($Extensions -contains "openai.chatgpt") {
+        Record-OK "Codex extension" "openai.chatgpt"
+    }
+    else {
+        Record-Fail "Codex extension" "not installed"
+    }
+}
+else {
+    Record-Fail "VS Code command" "command not found"
+}
+
 Write-Section "Windows Settings"
 
 $ExplorerAdvanced = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"

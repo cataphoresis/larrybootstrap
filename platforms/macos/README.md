@@ -6,6 +6,7 @@ Recreates the preferred macOS environment for this MacBook.
 
 - Install Homebrew and command-line tools
 - Install preferred applications
+- Install the OpenAI Codex CLI and official VS Code extension
 - Apply Finder, Dock, keyboard, trackpad, and power settings
 - Preserve and install ChatGPT-Left75
 - Produce verification and inventory reports
@@ -46,6 +47,19 @@ by the standard Homebrew profile.
 - wget
 - jq
 - gh
+- Codex CLI
+
+## Codex and Visual Studio Code
+
+Every macOS profile installs or updates the Codex CLI with OpenAI's official
+macOS installer and installs the official `openai.chatgpt` extension into
+Visual Studio Code. Both steps are idempotent and included in dry-run and
+verification reporting.
+
+Authentication remains interactive. On first use, run `codex` and choose
+**Sign in with ChatGPT**. In VS Code, open the Codex icon or press
+Command+Shift+P and run **Codex: Open Codex Sidebar**, then sign in with the
+same ChatGPT account.
 
 ## Developer profile
 

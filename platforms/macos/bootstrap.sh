@@ -120,6 +120,7 @@ MODULES=(
     "10-homebrew.sh"
     "12-cleanup.sh"
     "15-compat-tools.sh"
+    "18-codex.sh"
     "20-defaults.sh"
     "25-filezilla.sh"
     "90-verify.sh"

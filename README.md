@@ -124,6 +124,11 @@ browser, Visual Studio Code, a lightweight editor, 1Password, VLC, Spotify, an
 archive utility, and Moonlight. Applications without a safe or useful
 implementation on all three systems remain platform-specific.
 
+The standard/full workstation flows on Windows, Linux, and macOS also provide
+the OpenAI Codex CLI and official `openai.chatgpt` Visual Studio Code
+extension. First-run ChatGPT authentication remains interactive on every
+platform.
+
 ## Terminal style
 
 LarryBootstrap uses an intentionally retro BBS-inspired terminal style on all

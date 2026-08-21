@@ -158,6 +158,102 @@ function Test-CommandAvailable {
     )
 }
 
+function Resolve-LarryCommandPath {
+    param(
+        [Parameter(Mandatory)]
+        [string[]]$Names,
+
+        [string[]]$CandidatePaths = @()
+    )
+
+    foreach ($Name in $Names) {
+        $Command = Get-Command $Name `
+            -CommandType Application `
+            -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+
+        if ($Command) {
+            return $Command.Source
+        }
+    }
+
+    foreach ($Candidate in $CandidatePaths) {
+        if (
+            -not [string]::IsNullOrWhiteSpace($Candidate) -and
+            (Test-Path -LiteralPath $Candidate -PathType Leaf)
+        ) {
+            return $Candidate
+        }
+    }
+
+    return $null
+}
+
+function Get-VSCodeCommandPath {
+    $Candidates = @()
+    $ProgramFilesX86 = [Environment]::GetEnvironmentVariable(
+        "ProgramFiles(x86)"
+    )
+
+    if ($env:LOCALAPPDATA) {
+        $Candidates += Join-Path $env:LOCALAPPDATA `
+            "Programs\Microsoft VS Code\bin\code.cmd"
+    }
+    if ($env:ProgramFiles) {
+        $Candidates += Join-Path $env:ProgramFiles `
+            "Microsoft VS Code\bin\code.cmd"
+    }
+    if ($ProgramFilesX86) {
+        $Candidates += Join-Path $ProgramFilesX86 `
+            "Microsoft VS Code\bin\code.cmd"
+    }
+
+    return Resolve-LarryCommandPath `
+        -Names @("code.cmd", "code") `
+        -CandidatePaths $Candidates
+}
+
+function Get-NpmCommandPath {
+    $Candidates = @()
+
+    if ($env:ProgramFiles) {
+        $Candidates += Join-Path $env:ProgramFiles "nodejs\npm.cmd"
+    }
+    if ($env:LOCALAPPDATA) {
+        $Candidates += Join-Path $env:LOCALAPPDATA `
+            "Programs\nodejs\npm.cmd"
+    }
+
+    return Resolve-LarryCommandPath `
+        -Names @("npm.cmd", "npm") `
+        -CandidatePaths $Candidates
+}
+
+function Get-CodexCommandPath {
+    $Candidates = @()
+
+    if ($env:APPDATA) {
+        $Candidates += Join-Path $env:APPDATA "npm\codex.cmd"
+    }
+    if ($env:ProgramFiles) {
+        $Candidates += Join-Path $env:ProgramFiles "nodejs\codex.cmd"
+    }
+    if ($env:LOCALAPPDATA) {
+        $Candidates += Join-Path $env:LOCALAPPDATA `
+            "Programs\codex\codex.exe"
+        $Candidates += Join-Path $env:LOCALAPPDATA `
+            "Programs\nodejs\codex.cmd"
+    }
+    if ($HOME) {
+        $Candidates += Join-Path $HOME ".local\bin\codex.exe"
+        $Candidates += Join-Path $HOME ".local\bin\codex"
+    }
+
+    return Resolve-LarryCommandPath `
+        -Names @("codex.cmd", "codex.exe", "codex") `
+        -CandidatePaths $Candidates
+}
+
 function Test-InternetConnection {
     param(
         [string]$HostName = "www.microsoft.com",

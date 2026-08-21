@@ -20,6 +20,8 @@ Recreates Matthew's lean, remote-first Windows environment.
 - Firefox
 - Chromium
 - Visual Studio Code
+- Node.js LTS
+- OpenAI Codex CLI and the official Codex VS Code extension
 - Notepad++
 - 1Password
 - Spotify
@@ -34,6 +36,13 @@ PowerShell 7 and WinGet through Microsoft App Installer are prerequisites.
 Git is installed by the standard WinGet stage when absent. Required package
 installs are retried once after a transient failure, and the parent process
 refreshes PATH before later configuration and verification stages.
+
+The standard profile installs Node.js LTS, installs or updates the official
+`@openai/codex` CLI package globally with npm, and installs or updates the
+official `openai.chatgpt` extension in Visual Studio Code. Authentication
+remains interactive: run `codex` and choose **Sign in with ChatGPT**. In VS
+Code, press Ctrl+Shift+P and run **Codex: Open Codex Sidebar**, then sign in
+with the same ChatGPT account.
 
 Parsec is retired from the Larry ecosystem. The cleanup stage removes the
 Parsec app, its separately registered virtual display/USB drivers, and known
@@ -79,9 +88,11 @@ not install or remove packages, refresh package sources, download files, create
 temporary files, write reports or backups, change registry or configuration
 values, restart processes, or prune old artifacts.
 
-The known Windows 10 host validates at 36 passed checks, one understood warning
-for a WSL build without `wsl --mount`, and zero failures. Exact clean-machine
-validation remains a separate-machine/full-VM gate; Windows Sandbox is not a
+The last native Windows 10 validation recorded 36 passed checks, one understood
+warning for a WSL build without `wsl --mount`, and zero failures. That run
+predates the Node.js, Codex CLI, and VS Code extension checks added here, so a
+new native Windows validation remains pending. Exact clean-machine validation
+also remains a separate-machine/full-VM gate; Windows Sandbox is not a
 representative target for AppX, user-context, or networking-driver installers.
 
 ## Terminal presentation contract
