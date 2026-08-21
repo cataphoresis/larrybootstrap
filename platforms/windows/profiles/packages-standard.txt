@@ -6,6 +6,7 @@ GitHub.cli|GitHub CLI|true
 Mozilla.Firefox|Firefox|true
 eloston.ungoogled-chromium|Chromium|false
 Microsoft.VisualStudioCode|Visual Studio Code|true
+OpenJS.NodeJS.LTS|Node.js LTS|true
 Notepad++.Notepad++|Notepad++|true
 VideoLAN.VLC|VLC|true
 Spotify.Spotify|Spotify|true|user

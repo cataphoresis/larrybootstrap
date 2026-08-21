@@ -81,6 +81,7 @@ $Pipeline = @(
     [pscustomobject]@{ Name = "Larry PowerShell"; File = "40-powershell.ps1";      Arguments = @() },
     [pscustomobject]@{ Name = "Browser setup";     File = "50-browser.ps1";         Arguments = @() },
     [pscustomobject]@{ Name = "PowerToys setup";   File = "60-workspaces.ps1";      Arguments = @() },
+    [pscustomobject]@{ Name = "Developer tooling"; File = "70-developer-tools.ps1"; Arguments = @() },
     [pscustomobject]@{ Name = "Verification";     File = "90-verify.ps1";          Arguments = $VerificationArguments }
 )
 

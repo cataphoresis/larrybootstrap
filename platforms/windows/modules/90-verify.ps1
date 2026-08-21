@@ -144,8 +144,14 @@ else {
                     "required download deferred this run ($($Package.Id)); rerun bootstrap"
             }
             "RequiredMissing" {
-                Record-Fail $Package.DisplayName `
-                    "required package is not installed ($($Package.Id))"
+                if ($DryRun) {
+                    Record-Warn $Package.DisplayName `
+                        "required package would install during apply ($($Package.Id))"
+                }
+                else {
+                    Record-Fail $Package.DisplayName `
+                        "required package is not installed ($($Package.Id))"
+                }
             }
             "OptionalMissing" {
                 Record-Warn $Package.DisplayName `
@@ -170,11 +176,45 @@ else {
             Record-OK $Package.name $ApplicationPath
         }
         elseif ([bool]$Package.required) {
-            Record-Fail $Package.name "required direct application is not installed"
+            if ($DryRun) {
+                Record-Warn $Package.name "required application would install during apply"
+            }
+            else {
+                Record-Fail $Package.name "required direct application is not installed"
+            }
         }
         else {
             Record-Warn $Package.name "optional direct application is not installed"
         }
+    }
+}
+
+Write-Section "Developer Tooling"
+
+foreach ($Tool in @("node.exe", "npm.cmd", "codex.cmd", "code.cmd")) {
+    $Command = Get-Command $Tool -ErrorAction SilentlyContinue
+    if ($Command) {
+        Record-OK $Tool $Command.Source
+    }
+    elseif ($DryRun) {
+        Record-Warn $Tool "not installed before apply"
+    }
+    else {
+        Record-Fail $Tool "command not found"
+    }
+}
+
+$CodeCommand = Get-Command code.cmd -ErrorAction SilentlyContinue
+if ($CodeCommand) {
+    $Extensions = @(& $CodeCommand.Source --list-extensions 2>$null)
+    if ($Extensions -contains "openai.chatgpt") {
+        Record-OK "Codex extension" "openai.chatgpt"
+    }
+    elseif ($DryRun) {
+        Record-Warn "Codex extension" "not installed before apply"
+    }
+    else {
+        Record-Fail "Codex extension" "openai.chatgpt is not installed"
     }
 }
 

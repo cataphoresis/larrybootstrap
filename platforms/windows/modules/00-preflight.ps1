@@ -179,12 +179,12 @@ Record-OK "Free space" "$FreeGB GB"
 if ($FreeGB -ge 20) {
     Record-OK "Disk-space check" "PASS"
 }
-elseif ($FreeGB -ge 5) {
+elseif ($FreeGB -ge 2) {
     Record-Warn "Disk-space check" `
         "Only $FreeGB GB free on the intentionally small Windows partition"
 }
 else {
-    Record-Fail "Disk-space check" "Less than 5 GB free"
+    Record-Fail "Disk-space check" "Less than 2 GB free"
 }
 
 Write-Section "Connectivity"

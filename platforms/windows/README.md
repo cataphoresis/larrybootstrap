@@ -21,6 +21,8 @@ Recreates Matthew's lean, remote-first Windows environment.
 - Firefox
 - Chromium
 - Visual Studio Code
+- Node.js LTS and npm
+- Codex CLI and the VS Code Codex extension
 - Notepad++
 - 1Password
 - Spotify
@@ -38,6 +40,10 @@ elevated PowerShell 7 console and exits. Git and GitHub CLI are installed by
 the standard WinGet stage when absent. Required package installs are retried
 once after a transient failure, and the parent process refreshes PATH before
 later configuration and verification stages.
+
+The developer-tooling stage installs `@openai/codex` globally with npm and
+installs the `openai.chatgpt` VS Code extension. Final verification requires
+the `node`, `npm`, `codex`, and `code` commands plus that extension.
 
 Inventory captures WinGet through a timeout-bounded native process. Native
 stdout is never piped through PowerShell formatting or `Out-File`, avoiding a

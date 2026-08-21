@@ -128,8 +128,9 @@ platform behavior is imported and verified. The revisions recorded in
 integration milestone.
 
 The shared standard profile reconciles Firefox, the platform-native secondary
-browser, Visual Studio Code, a lightweight editor, 1Password, VLC, Spotify, an
-archive utility, and Moonlight. Applications without a safe or useful
+browser, Visual Studio Code, Node.js/npm, Codex CLI and its VS Code extension,
+a lightweight editor, 1Password, VLC, Spotify, an archive utility, and
+Moonlight. Applications without a safe or useful
 implementation on all three systems remain platform-specific.
 
 ## Terminal style
