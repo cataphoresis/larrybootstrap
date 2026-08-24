@@ -50,10 +50,12 @@ Codex CLI's image-paste handler when pasting text.
 ## XFCE appearance and VS Code
 
 Full mode installs the pinned Qogir-Light GTK theme and Qogir icon set from
-their upstream releases. It applies Inter as the desktop font, keeps one
-34-pixel panel at the bottom, replaces the Applications menu with Whisker Menu,
-and adds the transparent rounded dark Whisker styling from OpenDesktop item
-1732225. The original panel XML is retained as
+their upstream releases. It applies Inter at 144 DPI, keeps one 46-pixel panel
+at the bottom, replaces the Applications menu with Whisker Menu, and adds the
+transparent rounded dark Whisker styling from OpenDesktop item 1732225. After
+all applications are installed, a final pass adds 40-pixel quick launchers for
+VS Code, Terminal, Firefox, 1Password, Thunar, and Balatro before the task list.
+The original panel XML is retained as
 `xfce4-panel.xml.larrybootstrap-backup` before the first layout change.
 
 VS Code receives the official OpenAI Codex extension, Fira Code editor and
@@ -72,7 +74,8 @@ ignored runtime directories.
 
 ## Implemented workstation scope
 
-- Debian 13 package repair, updates, core/full package sets, and multiarch
+- Debian 13 package repair, default contrib/non-free/non-free-firmware
+  repositories, updates, core/full package sets, and multiarch
 - Firefox, Chromium, VLC, Spotify, 1Password, Visual Studio Code, Geany,
   Moonlight, Heroic, Steam, Android platform tools, GitHub CLI, Node.js, npm,
   and the official OpenAI Codex CLI

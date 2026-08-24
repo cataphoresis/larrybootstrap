@@ -385,6 +385,7 @@ EOF
     xfconf_set xsettings /Net/ThemeName string Qogir-Light
     xfconf_set xsettings /Net/IconThemeName string Qogir
     xfconf_set xsettings /Gtk/FontName string "Inter 10"
+    xfconf_set xsettings /Xft/DPI int 144
     xfconf_set xfwm4 /general/theme string Qogir-Light
 
     xfconf-query -c xfce4-panel -p /panels/panel-2 -r -R 2>/dev/null || true
@@ -395,6 +396,97 @@ EOF
 
     xfce4-panel --restart
     success "Applied Qogir-Light, Qogir icons, one bottom panel, and Whisker Menu"
+}
+
+configure_xfce_panel_layout() {
+    if ! is_macbook_xfce_profile; then
+        echo "MacBook9,1 with XFCE not detected; skipping final XFCE panel layout."
+        return
+    fi
+
+    section "Applying final XFCE panel layout"
+
+    if ! is_current_xfce_graphical_session; then
+        warning "Final XFCE panel layout requires a live XFCE session; rerun full mode after login"
+        return
+    fi
+
+    local panel_dir="$HOME/.config/xfce4/panel"
+    local plugin_id
+    local desktop_file
+    local item
+    local -a plugin_ids=(101 102 103 104 105 106)
+    local -a desktop_files=(
+        /usr/share/applications/code.desktop
+        /usr/share/applications/xfce4-terminal.desktop
+        /usr/share/applications/firefox-esr.desktop
+        /usr/share/applications/1password.desktop
+        /usr/share/applications/thunar.desktop
+        "$HOME/.local/share/applications/Balatro.desktop"
+    )
+
+    mkdir -p "$panel_dir" "$HOME/.local/share/applications"
+
+    if [[ ! -f "${desktop_files[5]}" ]]; then
+        install -m 0644 /dev/stdin "${desktop_files[5]}" <<'EOF'
+[Desktop Entry]
+Name=Balatro
+Comment=Play this game on Steam
+Exec=steam steam://rungameid/2379780
+Icon=steam_icon_2379780
+Terminal=false
+Type=Application
+Categories=Game;
+EOF
+    fi
+
+    for plugin_id in "${plugin_ids[@]}"; do
+        xfconf-query -c xfce4-panel -p "/plugins/plugin-$plugin_id" -r -R \
+            2>/dev/null || true
+        rm -rf "$panel_dir/launcher-$plugin_id"
+    done
+
+    for ((item = 0; item < ${#plugin_ids[@]}; item++)); do
+        plugin_id="${plugin_ids[$item]}"
+        desktop_file="${desktop_files[$item]}"
+
+        if [[ ! -f "$desktop_file" ]]; then
+            warning "Quick-launch application is unavailable: $desktop_file"
+            return
+        fi
+
+        mkdir -p "$panel_dir/launcher-$plugin_id"
+        cp "$desktop_file" "$panel_dir/launcher-$plugin_id/$(basename "$desktop_file")"
+        xfconf-query -c xfce4-panel -p "/plugins/plugin-$plugin_id" \
+            -n -t string -s launcher
+        xfconf-query -c xfce4-panel -p "/plugins/plugin-$plugin_id/items" \
+            -n -a -t string -s "$(basename "$desktop_file")"
+    done
+
+    xfconf_set xfce4-panel /plugins/plugin-1 string whiskermenu
+    xfconf_set xfce4-panel /plugins/plugin-2 string tasklist
+    xfconf_set xfce4-panel /plugins/plugin-3 string separator
+    xfconf_set xfce4-panel /plugins/plugin-4 string pager
+    xfconf_set xfce4-panel /plugins/plugin-5 string separator
+    xfconf_set xfce4-panel /plugins/plugin-6 string systray
+    xfconf_set xfce4-panel /plugins/plugin-7 string separator
+    xfconf_set xfce4-panel /plugins/plugin-8 string clock
+    xfconf_set xfce4-panel /plugins/plugin-9 string separator
+    xfconf_set xfce4-panel /plugins/plugin-10 string actions
+    xfconf_set xfce4-panel /plugins/plugin-3/expand bool true
+    xfconf_set xfce4-panel /panels/panel-1/size uint 46
+    xfconf_set xfce4-panel /panels/panel-1/icon-size uint 40
+
+    xfconf-query -c xfce4-panel -p /panels/panel-1/plugin-ids \
+        -t int -s 1 \
+        -t int -s 101 -t int -s 102 -t int -s 103 \
+        -t int -s 104 -t int -s 105 -t int -s 106 \
+        -t int -s 2 -t int -s 3 -t int -s 4 -t int -s 5 \
+        -t int -s 6 -t int -s 7 -t int -s 8 -t int -s 9 \
+        -t int -s 10
+
+    xfce4-panel --restart
+    success "Applied 40-pixel quick launchers and the shared cross-OS panel layout"
 }
 
 configure_vscode_codex() {

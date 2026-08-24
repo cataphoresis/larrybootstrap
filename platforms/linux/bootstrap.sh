@@ -51,6 +51,7 @@ case "$MODE" in
         wait_for_package_manager || exit 1
         apt_repair
         configure_multiarch
+        configure_debian_repositories
         apt_update_upgrade
         install_core_packages
         configure_mac_keyboard_compatibility
@@ -66,6 +67,7 @@ case "$MODE" in
         wait_for_package_manager || exit 1
         apt_repair
         configure_multiarch
+        configure_debian_repositories
         apt_update_upgrade
         install_core_packages
         configure_package_defaults
@@ -86,6 +88,7 @@ case "$MODE" in
         configure_user_groups
         enable_trim
         safe_package_cleanup
+        configure_xfce_panel_layout
         capture_audit
         ;;
 

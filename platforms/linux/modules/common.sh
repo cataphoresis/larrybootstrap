@@ -225,6 +225,64 @@ configure_multiarch() {
     fi
 }
 
+configure_debian_repositories() {
+    section "Enabling Debian repository components"
+
+    local source_file
+    local temp
+    local changed=false
+    local -a source_files=(
+        /etc/apt/sources.list
+        /etc/apt/sources.list.d/debian.sources
+    )
+
+    for source_file in "${source_files[@]}"; do
+        [[ -f "$source_file" ]] || continue
+        temp="$(mktemp)"
+
+        awk '
+            function add_component(component) {
+                if ($0 !~ "(^|[[:space:]])" component "([[:space:]]|$)") {
+                    $0 = $0 " " component
+                }
+            }
+
+            /^[[:space:]]*deb(-src)?[[:space:]]/ &&
+            ($0 ~ /deb\.debian\.org/ || $0 ~ /security\.debian\.org/) {
+                add_component("contrib")
+                add_component("non-free")
+                add_component("non-free-firmware")
+            }
+
+            /^[[:space:]]*Components:/ {
+                add_component("contrib")
+                add_component("non-free")
+                add_component("non-free-firmware")
+            }
+
+            { print }
+        ' "$source_file" > "$temp"
+
+        if cmp -s "$source_file" "$temp"; then
+            rm -f "$temp"
+            continue
+        fi
+
+        if [[ ! -f "$source_file.larrybootstrap-backup" ]]; then
+            sudo cp -p "$source_file" "$source_file.larrybootstrap-backup"
+        fi
+
+        sudo install -m 0644 "$temp" "$source_file"
+        rm -f "$temp"
+        changed=true
+        success "Enabled contrib, non-free, and non-free-firmware in $source_file"
+    done
+
+    if [[ "$changed" == false ]]; then
+        echo "Debian contrib, non-free, and non-free-firmware are already enabled."
+    fi
+}
+
 apt_update_upgrade() {
     section "Updating Debian"
 
