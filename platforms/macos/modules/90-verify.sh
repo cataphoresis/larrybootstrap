@@ -225,6 +225,34 @@ verify_default() {
     fi
 }
 
+verify_protected_default() {
+    local domain="$1"
+    local key="$2"
+    local expected="$3"
+    local label="$4"
+    local display="$5"
+    local actual
+
+    if ! defaults read "$domain" >/dev/null 2>&1; then
+        warn \
+            "$label" \
+            "Full Disk Access required" \
+            "Enable Terminal under System Preferences -> Security & Privacy -> Privacy -> Full Disk Access, then rerun the bootstrap."
+        return
+    fi
+
+    actual="$(read_default "$domain" "$key")"
+
+    if [[ "$actual" == "$expected" ]]; then
+        pass "$label" "$display"
+    else
+        fail \
+            "$label" \
+            "expected $expected; found $actual" \
+            "Rerun the defaults module and verify the setting."
+    fi
+}
+
 section "MacBook Bootstrap Verification"
 
 report_status info "Profile" "$PROFILE"
@@ -431,6 +459,37 @@ fi
 if [[ "$PROFILE" == "developer" ]]; then
     section "Developer Toolchain"
 
+    if command -v code >/dev/null 2>&1; then
+        if code --list-extensions 2>/dev/null |
+            awk '
+                BEGIN { found = 1 }
+                tolower($0) == "openai.chatgpt" { found = 0 }
+                END { exit found }
+            '
+        then
+            pass "OpenAI VS Code Extension" "installed"
+        else
+            fail \
+                "OpenAI VS Code Extension" \
+                "openai.chatgpt not installed" \
+                "Run: code --install-extension openai.chatgpt"
+        fi
+    else
+        fail \
+            "OpenAI VS Code Extension" \
+            "code command unavailable" \
+            "Add the Visual Studio Code command-line launcher to PATH."
+    fi
+
+    if command -v codex >/dev/null 2>&1; then
+        pass "Codex CLI" "$(codex --version 2>/dev/null | head -n 1)"
+    else
+        fail \
+            "Codex CLI" \
+            "command not found" \
+            "Install with: npm install -g @openai/codex"
+    fi
+
     if command -v rustc >/dev/null 2>&1; then
         pass "Rust" "$(rustc --version)"
     else
@@ -460,7 +519,7 @@ if [[ "$PROFILE" == "developer" ]]; then
         warn \
             "Tauri CLI" \
             "not installed" \
-            "Install the Tauri CLI if ChatGPT-Left75 development is required."
+            "Install the Tauri CLI if Tauri development is required."
     fi
 fi
 
@@ -469,11 +528,6 @@ section "Profile-independent Applications"
 check_app \
     "FileZilla" \
     "/Applications/FileZilla.app"
-
-check_app \
-    "ChatGPT-Left75" \
-    "/Applications/chatgpt-left75.app" \
-    "/Applications/ChatGPT-Left75.app"
 
 section "Retired Applications"
 
@@ -522,11 +576,11 @@ verify_default \
     com.apple.AppleMultitouchTrackpad Clicking 1 \
     "Tap to click" "enabled"
 
-verify_default \
+verify_protected_default \
     com.apple.universalaccess reduceMotion 1 \
     "Reduce motion" "enabled"
 
-verify_default \
+verify_protected_default \
     com.apple.universalaccess reduceTransparency 1 \
     "Reduce transparency" "enabled"
 
@@ -537,50 +591,6 @@ else
         "Screenshot folder" \
         "missing" \
         "Run modules/20-defaults.sh."
-fi
-
-section "Custom ChatGPT Application"
-
-CHATGPT_APP=""
-
-for candidate in \
-    "/Applications/chatgpt-left75.app" \
-    "/Applications/ChatGPT-Left75.app"
-do
-    if [[ -d "$candidate" ]]; then
-        CHATGPT_APP="$candidate"
-        break
-    fi
-done
-
-if [[ -n "$CHATGPT_APP" ]]; then
-    bundle_id="$(
-        defaults read "$CHATGPT_APP/Contents/Info" \
-            CFBundleIdentifier 2>/dev/null ||
-        echo unknown
-    )"
-
-    chatgpt_version="$(
-        defaults read "$CHATGPT_APP/Contents/Info" \
-            CFBundleShortVersionString 2>/dev/null ||
-        echo unknown
-    )"
-
-    if [[ "$bundle_id" == "com.matthewjordan.chatgpt-left75" ]]; then
-        pass "ChatGPT bundle ID" "$bundle_id"
-    else
-        warn \
-            "ChatGPT bundle ID" \
-            "$bundle_id" \
-            "Review the installed custom ChatGPT application metadata."
-    fi
-
-    pass "ChatGPT version" "$chatgpt_version"
-else
-    fail \
-        "ChatGPT metadata" \
-        "application missing" \
-        "Restore or rebuild ChatGPT-Left75."
 fi
 
 if (( ${#warning_guidance[@]} > 0 ||

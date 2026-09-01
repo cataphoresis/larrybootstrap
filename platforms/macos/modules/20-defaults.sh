@@ -90,6 +90,21 @@ verify_default() {
     fi
 }
 
+apply_protected_default() {
+    local domain="$1"
+    local key="$2"
+    local label="$3"
+
+    if defaults write "$domain" "$key" -bool true 2>/dev/null; then
+        report_status ok "$label" "enabled"
+    else
+        report_status warn "$label" "Full Disk Access required"
+        warning_guidance+=(
+            "$label|macOS blocked the protected preference write.|Enable Terminal under System Preferences -> Security & Privacy -> Privacy -> Full Disk Access, then rerun the bootstrap."
+        )
+    fi
+}
+
 section "macOS Defaults Configuration"
 
 report_status info "Current user" "$(id -un)"
@@ -301,13 +316,13 @@ if [[ "$MACBOOK_DRY_RUN" == "1" ]]; then
     report_status info "Responsiveness changes" "would apply"
 else
 
-    defaults write \
-        com.apple.universalaccess \
-        reduceMotion -bool true
+    apply_protected_default \
+        com.apple.universalaccess reduceMotion \
+        "Reduce motion"
 
-    defaults write \
-        com.apple.universalaccess \
-        reduceTransparency -bool true
+    apply_protected_default \
+        com.apple.universalaccess reduceTransparency \
+        "Reduce transparency"
 
     defaults write \
         NSGlobalDomain \
@@ -335,13 +350,15 @@ else
 
 fi
 
-verify_default \
-    com.apple.universalaccess reduceMotion 1 \
-    "Reduce motion" "enabled"
+if [[ "$MACBOOK_DRY_RUN" == "1" ]]; then
+    verify_default \
+        com.apple.universalaccess reduceMotion 1 \
+        "Reduce motion" "enabled"
 
-verify_default \
-    com.apple.universalaccess reduceTransparency 1 \
-    "Reduce transparency" "enabled"
+    verify_default \
+        com.apple.universalaccess reduceTransparency 1 \
+        "Reduce transparency" "enabled"
+fi
 
 verify_default \
     NSGlobalDomain NSAutomaticWindowAnimationsEnabled 0 \
@@ -361,6 +378,25 @@ else
     report_status ok "Finder restart" "complete"
     report_status ok "Dock restart" "complete"
     report_status ok "System UI restart" "complete"
+fi
+
+if (( ${#warning_guidance[@]} > 0 )); then
+    section "Warnings & Actions"
+
+    for item in "${warning_guidance[@]}"; do
+        IFS='|' read -r item_label item_detail item_action <<< "$item"
+
+        status_warn
+        printf ' %s\n' "$item_label"
+        printf '       %s\n' "$item_detail"
+        printf '       Action: %s\n' "$item_action"
+
+        {
+            printf '[WARN] %s\n' "$item_label"
+            printf '       %s\n' "$item_detail"
+            printf '       Action: %s\n' "$item_action"
+        } >> "$REPORT_FILE"
+    done
 fi
 
 section "Defaults Result"

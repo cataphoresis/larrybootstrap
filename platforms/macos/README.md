@@ -7,7 +7,6 @@ Recreates the preferred macOS environment for this MacBook.
 - Install Homebrew and command-line tools
 - Install preferred applications
 - Apply Finder, Dock, keyboard, trackpad, and power settings
-- Preserve and install ChatGPT-Left75
 - Produce verification and inventory reports
 - Remain safe to run repeatedly
 
@@ -34,7 +33,7 @@ Homebrew manages:
 Amphetamine remains a manual/App Store item. FileZilla is handled by a separate
 Intel-compatibility module using a reviewed local archive. Existing Wireshark,
 Raspberry Pi Imager, Balena Etcher, Private Internet Access, HandBrake,
-MKVToolNix, MakeMKV, and ChatGPT-Left75 installations are preserved and
+MKVToolNix and MakeMKV installations are preserved and
 verified where the implementation defines a check; they are not all installed
 by the standard Homebrew profile.
 
@@ -51,12 +50,9 @@ by the standard Homebrew profile.
 
 The developer profile extends standard with Python, CMake, pkg-config, Node,
 Wireshark, Balena Etcher, Private Internet Access, HandBrake, Raspberry Pi
-Imager, Rust, and Tauri. Node uses the compatibility-managed official Intel
-binary rather than Homebrew on this Monterey host.
-
-## Custom application
-
-- ChatGPT-Left75
+Imager, Rust, Tauri, the OpenAI VS Code extension, and Codex CLI. Node uses the
+compatibility-managed official Intel binary rather than Homebrew on this
+Monterey host. Codex is installed through npm after Node is available.
 
 ## Usage
 

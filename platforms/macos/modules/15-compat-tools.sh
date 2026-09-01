@@ -87,6 +87,19 @@ node_version() {
         head -n 1
 }
 
+codex_version() {
+    codex --version 2>/dev/null | head -n 1
+}
+
+vscode_extension_installed() {
+    code --list-extensions 2>/dev/null |
+        awk '
+            BEGIN { found = 1 }
+            tolower($0) == "openai.chatgpt" { found = 0 }
+            END { exit found }
+        '
+}
+
 install_ffmpeg_tools() {
     local tmp_dir
     local ffmpeg_zip
@@ -365,6 +378,52 @@ if manual_formula_requested node; then
             larry_stage "Install official Node.js 22 LTS"
             install_node
         fi
+    fi
+fi
+
+if [[ "$PROFILE" == "developer" ]]; then
+    section "OpenAI Developer Tools"
+
+    if ! command -v code >/dev/null 2>&1; then
+        report_status warn "OpenAI VS Code Extension" "code command unavailable"
+        warning_guidance+=(
+            "OpenAI VS Code Extension|Visual Studio Code is installed but its code command is unavailable.|Add the Visual Studio Code command-line launcher to PATH, then rerun the bootstrap."
+        )
+    elif vscode_extension_installed; then
+        report_status ok "OpenAI VS Code Extension" "installed"
+        present_count=$((present_count + 1))
+    elif [[ "$MACBOOK_DRY_RUN" == "1" ]]; then
+        report_status info "OpenAI VS Code Extension" "would install openai.chatgpt"
+    elif code --install-extension openai.chatgpt; then
+        report_status ok "OpenAI VS Code Extension" "installed"
+        installed_count=$((installed_count + 1))
+    else
+        report_status warn "OpenAI VS Code Extension" "installation failed"
+        warning_guidance+=(
+            "OpenAI VS Code Extension|The openai.chatgpt extension could not be installed.|Run: code --install-extension openai.chatgpt"
+        )
+    fi
+
+    if command -v codex >/dev/null 2>&1; then
+        report_status ok "Codex CLI" "$(codex_version)"
+        present_count=$((present_count + 1))
+    elif ! command -v npm >/dev/null 2>&1; then
+        report_status warn "Codex CLI" "npm unavailable"
+        warning_guidance+=(
+            "Codex CLI|npm is required to install @openai/codex.|Restore the compatibility-managed Node.js installation, then rerun the bootstrap."
+        )
+    elif [[ "$MACBOOK_DRY_RUN" == "1" ]]; then
+        report_status info "Codex CLI" "would install @openai/codex"
+    elif npm install -g @openai/codex &&
+         command -v codex >/dev/null 2>&1
+    then
+        report_status ok "Codex CLI" "$(codex_version)"
+        installed_count=$((installed_count + 1))
+    else
+        report_status warn "Codex CLI" "installation failed"
+        warning_guidance+=(
+            "Codex CLI|npm could not install @openai/codex globally.|Review npm global-directory permissions, then rerun the bootstrap."
+        )
     fi
 fi
 

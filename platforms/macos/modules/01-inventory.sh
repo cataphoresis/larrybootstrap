@@ -219,58 +219,6 @@ if command_exists cargo; then
     fi
 fi
 
-section "Custom ChatGPT Application"
-
-CHATGPT_INSTALLED=""
-
-for candidate in \
-    "/Applications/chatgpt-left75.app" \
-    "/Applications/ChatGPT-Left75.app" \
-    "$HOME/Applications/chatgpt-left75.app" \
-    "$HOME/Applications/ChatGPT-Left75.app"
-do
-    if [[ -d "$candidate" ]]; then
-        CHATGPT_INSTALLED="$candidate"
-        break
-    fi
-done
-
-CHATGPT_PROJECT="$HOME/chatgpt-left75"
-CHATGPT_BUILT_APP="$CHATGPT_PROJECT/src-tauri/target/release/bundle/macos/chatgpt-left75.app"
-
-if [[ -n "$CHATGPT_INSTALLED" ]]; then
-    report_status ok "Installed application" "chatgpt-left75.app"
-
-    defaults read "$CHATGPT_INSTALLED/Contents/Info" \
-        > "$BACKUP_PATH/chatgpt-left75-info.txt" 2>/dev/null || true
-
-    if [[ -s "$BACKUP_PATH/chatgpt-left75-info.txt" ]]; then
-        report_status ok "Application metadata" "captured"
-    else
-        warn "Application metadata" "could not be read"
-    fi
-else
-    report_status info "Installed application" "not found"
-fi
-
-if [[ -d "$CHATGPT_PROJECT" ]]; then
-    report_status ok "Source project" "chatgpt-left75"
-
-    if command_exists git && git -C "$CHATGPT_PROJECT" status \
-        > "$BACKUP_PATH/chatgpt-project-git-status.txt" 2>/dev/null
-    then
-        report_status ok "Project Git status" "captured"
-    fi
-else
-    report_status info "Source project" "not found"
-fi
-
-if [[ -d "$CHATGPT_BUILT_APP" ]]; then
-    report_status ok "Built application" "release build present"
-else
-    report_status info "Built application" "not found"
-fi
-
 section "Login and Launch Items"
 
 LOGIN_ITEMS_FILE="$BACKUP_PATH/login-items.txt"
