@@ -54,6 +54,13 @@ Imager, Rust, Tauri, the OpenAI VS Code extension, and Codex CLI. Node uses the
 compatibility-managed official Intel binary rather than Homebrew on this
 Monterey host. Codex is installed through npm after Node is available.
 
+The two protected accessibility preferences are attempted normally. When
+Monterey blocks them, the defaults module continues and reports that Terminal
+needs Full Disk Access under System Preferences -> Security & Privacy ->
+Privacy -> Full Disk Access. Verification reports inaccessible protected
+preferences as warnings while still treating readable incorrect values as
+failures.
+
 ## Usage
 
 ```bash
@@ -63,12 +70,18 @@ Monterey host. Codex is installed through npm after Node is available.
 ./bootstrap.sh --profile developer --verify-only
 ```
 
-The unified implementation has passed native Monterey dry-run, reconciliation,
-idempotency, verification, syntax, ShellCheck, and 72-column presentation
-validation. Runtime artifacts remain under ignored `reports/` and `backups/`
-locations.
+The standard-profile implementation has passed native Monterey dry-run,
+reconciliation, idempotency, verification, syntax, ShellCheck, and 72-column
+presentation validation. Runtime artifacts remain under ignored `reports/`
+and `backups/` locations.
 
 The standard-profile validation above was originally based on standalone
-commit `a75d2cc`. Developer-profile source from standalone commit `732e6ce` is
-now synchronized exactly into the unified tree. Native unified developer dry-
-run, verification, reconciliation, and idempotency checks remain pending.
+commit `a75d2cc`. Developer-profile source from standalone commit `732e6ce` was
+the import baseline. Commit `419f664` adds the current OpenAI tooling and
+Monterey privacy handling.
+
+On `rosebook`, direct developer verification detects `openai.chatgpt`, Node
+`v22.22.3`, npm `12.0.2`, and Codex CLI `0.152.0`. The protected accessibility
+preferences are also readable and correct with Terminal Full Disk Access.
+Complete developer-profile reconciliation and idempotency checks remain
+pending because Wireshark, Balena Etcher, and HandBrake are not yet installed.

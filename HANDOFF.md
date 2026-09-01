@@ -1,8 +1,33 @@
 # LarryBootstrap Handoff
 
-Updated August 20, 2026 after post-reboot validation on `linuxbook`.
+Updated September 1, 2026 after macOS Monterey developer-tooling validation on
+`rosebook`.
 
 ## Current state
+
+Commit `419f664` is pushed to `origin/main`. It updates the macOS bootstrap to:
+
+- continue after Monterey blocks protected `com.apple.universalaccess`
+  preference writes, reporting the required Terminal Full Disk Access action;
+- verify inaccessible protected preferences as warnings instead of failures;
+- install and verify `openai.chatgpt` only for the developer profile;
+- install and verify `@openai/codex` through npm only for the developer profile;
+- retain Node and npm in the official Intel compatibility direct-install path;
+  and
+- remove the obsolete custom-application inventory and verification policy.
+
+Read-only validation on `rosebook` (`macOS 12.6.7`, `x86_64`) found Visual
+Studio Code's `code` command, `openai.chatgpt`, Node `v22.22.3`, npm `12.0.2`,
+and Codex CLI `0.152.0`. Developer verification reported both OpenAI checks and
+both protected accessibility preferences as passing. Its overall result was
+still incomplete because Wireshark, Balena Etcher, and HandBrake were absent;
+Rust and Tauri remained optional warnings.
+
+Shell syntax checks and `git diff --check` passed. ShellCheck was unavailable
+on `rosebook`. No complete developer-profile install or idempotency rerun has
+yet been performed after this change.
+
+## Linux validated state
 
 The Debian 13 full bootstrap and post-reboot audit completed successfully with
 zero warnings and zero failures. The final audit is recorded in the ignored
@@ -26,7 +51,7 @@ original panel configuration as `xfce4-panel.xml.larrybootstrap-backup`, and
 reloaded the Mac-style xbindkeys mappings. The final audit confirmed that
 xbindkeys is running in the fresh XFCE session.
 
-## Post-reboot validation
+## Linux post-reboot validation
 
 Completed successfully on August 20, 2026. In a fresh VS Code session:
 
@@ -44,4 +69,7 @@ Run installation commands from an interactive terminal. A command runner with
 no TTY cannot display sudo's password prompt and fails at `sudo -v`; the VS Code
 integrated terminal works when the command is entered manually.
 
-The Linux changes are ready for final review, commit, and push.
+The Linux changes were committed and pushed previously. The next macOS step is
+to install or reconcile the remaining developer-profile applications, rerun
+the full developer bootstrap, rerun it for idempotency, and confirm final
+verification without failures.

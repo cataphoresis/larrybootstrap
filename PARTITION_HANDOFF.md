@@ -22,7 +22,8 @@ format, repair, or recreate any partition yet.
 - Firmware boot: UEFI
 - Operating systems: macOS, Debian 13 XFCE, and Windows/Boot Camp
 - LarryBootstrap work is complete, committed, and pushed.
-- LarryBootstrap commit: `2d86585 Enhance Linux desktop and Codex setup`
+- macOS bootstrap change: `419f664 Harden macOS defaults and add Codex tooling`
+- Linux validation referenced below was completed at commit `2d86585`.
 - Linux post-reboot bootstrap audit: zero warnings and zero failures.
 - The Linux root filesystem and BOOTCAMP volume were mounted normally.
 

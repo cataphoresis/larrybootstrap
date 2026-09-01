@@ -162,9 +162,15 @@ this purpose because its Windows 10 image does not support the required AppX
 and networking-driver installers reliably.
 
 `common/platform-baselines.json` records synchronized macOS developer-profile
-source `732e6ce`. Its five implementation/profile files match the standalone
-commit exactly. Native execution through the unified root remains required
-before that developer integration is accepted as a release milestone.
+source `732e6ce` as the original import checkpoint. The unified macOS
+implementation now extends that baseline with Monterey privacy handling and
+developer-profile OpenAI tooling at commit `419f664`.
+
+On the validated Intel Monterey host, the `openai.chatgpt` VS Code extension
+and Codex CLI are detected successfully. Node and npm remain
+compatibility-managed from the official Intel Node distribution instead of a
+Homebrew Node formula. Protected `com.apple.universalaccess` writes now warn
+with a Full Disk Access action instead of aborting the remaining defaults.
 
 ## Packaging releases
 
@@ -187,8 +193,11 @@ Current packaging state:
 3. macOS — native implementation validated; standalone launcher packaging is
    still future work.
 
-The next integration task is native unified developer-profile validation on the
-known Monterey installation. The next clean-install gate remains an exact
-Windows standard-profile installation on a separate physical machine or full
-VM, followed by idempotency and final verification. Do not retire the
-standalone recovery repositories before both tasks pass.
+The remaining macOS gate is a complete developer-profile reconciliation and
+idempotency run after the profile's missing applications are installed. The
+OpenAI extension, Codex CLI, and protected-preference verification paths have
+already passed direct validation on the known Monterey host. The next
+clean-install gate remains an exact Windows standard-profile installation on a
+separate physical machine or full VM, followed by idempotency and final
+verification. Do not retire the standalone recovery repositories before both
+tasks pass.
