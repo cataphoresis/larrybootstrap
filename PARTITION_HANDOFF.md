@@ -2,6 +2,26 @@
 
 Use this handoff to continue in ChatGPT while booted into macOS on `linuxbook`.
 
+## Bootloader recovery takes priority
+
+As of September 2, 2026, the attempted rEFInd installation did not complete
+successfully. Boot into Debian and restore reliable boot selection before
+resuming this partition evaluation. Do not resize or otherwise modify any
+partition as part of the initial bootloader diagnosis.
+
+Collect these read-only results first:
+
+```bash
+sudo efibootmgr -v
+lsblk -o NAME,SIZE,FSTYPE,LABEL,PARTLABEL,PARTUUID,MOUNTPOINTS
+findmnt /boot/efi
+sudo find /boot/efi/EFI -maxdepth 3 -type f -print
+```
+
+Record the exact failed rEFInd command and output if available. Preserve all
+existing Apple, Windows, Debian, and fallback EFI loaders until the active boot
+path and failure mode are understood.
+
 ## Objective
 
 Evaluate the internal 256 GB NVMe disk and design a backup-first repartitioning

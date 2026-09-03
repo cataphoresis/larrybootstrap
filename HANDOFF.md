@@ -1,7 +1,7 @@
 # LarryBootstrap Handoff
 
-Updated September 1, 2026 after macOS Monterey developer-tooling validation on
-`rosebook`.
+Updated September 2, 2026 after macOS Monterey developer-tooling validation and
+the subsequent rEFInd installation problem.
 
 ## Current state
 
@@ -31,6 +31,18 @@ The next macOS Homebrew revision adopts a bottle-only Monterey policy. Formula
 installation preflights the requested formula and missing dependencies; an
 unavailable compatible bottle becomes a warning and manual/precompiled-binary
 action rather than an automatic source compilation.
+
+## Immediate boot recovery handoff
+
+The attempted rEFInd installation did not complete successfully. Boot back into
+Debian before continuing bootstrap validation. Treat bootloader recovery as the
+immediate task and pause partition-layout work until normal boot selection is
+restored.
+
+Begin in Debian with read-only evidence: current UEFI boot entries, mounted EFI
+System Partition, block-device layout, and the contents of the EFI directory.
+Do not format the EFI System Partition, recreate the partition table, or remove
+Apple, Windows, Debian, or fallback EFI loaders while diagnosing rEFInd.
 
 ## Linux validated state
 
