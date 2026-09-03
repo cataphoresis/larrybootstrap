@@ -172,6 +172,12 @@ compatibility-managed from the official Intel Node distribution instead of a
 Homebrew Node formula. Protected `com.apple.universalaccess` writes now warn
 with a Full Disk Access action instead of aborting the remaining defaults.
 
+On Monterey, macOS formula installation is bottle-only by policy. The
+bootstrap checks each requested formula and its missing dependencies before
+installation, skips the formula when a compatible precompiled bottle is not
+available, and reports a reviewed binary/manual-install action instead of
+silently starting a source build.
+
 ## Packaging releases
 
 The current packaged release targets Windows and preserves the tested

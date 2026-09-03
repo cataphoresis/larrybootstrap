@@ -27,6 +27,11 @@ Shell syntax checks and `git diff --check` passed. ShellCheck was unavailable
 on `rosebook`. No complete developer-profile install or idempotency rerun has
 yet been performed after this change.
 
+The next macOS Homebrew revision adopts a bottle-only Monterey policy. Formula
+installation preflights the requested formula and missing dependencies; an
+unavailable compatible bottle becomes a warning and manual/precompiled-binary
+action rather than an automatic source compilation.
+
 ## Linux validated state
 
 The Debian 13 full bootstrap and post-reboot audit completed successfully with

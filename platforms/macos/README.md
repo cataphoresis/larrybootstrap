@@ -46,6 +46,19 @@ by the standard Homebrew profile.
 - jq
 - gh
 
+## Monterey binary-install policy
+
+The bootstrap does not knowingly compile Homebrew formulae from source on
+Monterey. Before installing a formula, it checks the requested formula and its
+missing dependencies for compatible precompiled bottles. If any bottle is
+unavailable, the formula is skipped with a warning and an action to use a
+reviewed official Intel package or manage the tool manually.
+
+The preferred order is an already-compatible command, a compatible Homebrew
+bottle, an official precompiled Intel package with integrity and architecture
+checks, and finally an explicitly approved source build. Existing formulae are
+not reinstalled merely because an older run compiled them from source.
+
 ## Developer profile
 
 The developer profile extends standard with Python, CMake, pkg-config, Node,

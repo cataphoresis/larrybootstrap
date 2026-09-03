@@ -75,6 +75,43 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+formula_has_bottle() {
+    local formula="$1"
+
+    brew info --json=v2 --formula "$formula" 2>/dev/null |
+        /usr/bin/ruby -rjson -e '
+            data = JSON.parse(STDIN.read)
+            files = data.fetch("formulae").first
+                        .dig("bottle", "stable", "files") || {}
+            exit(files.empty? ? 1 : 0)
+        '
+}
+
+first_formula_without_bottle() {
+    local formula="$1"
+    local dependency
+    local -a candidates=("$formula")
+
+    while IFS= read -r dependency; do
+        [[ -n "$dependency" ]] && candidates+=("$dependency")
+    done < <(
+        brew deps --formula --include-build --missing "$formula" 2>/dev/null
+    )
+
+    for dependency in "${candidates[@]}"; do
+        if brew list --formula "$dependency" >/dev/null 2>&1; then
+            continue
+        fi
+
+        if ! formula_has_bottle "$dependency"; then
+            printf '%s\n' "$dependency"
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 cask_app_path() {
     case "$1" in
         firefox)                  printf '/Applications/Firefox.app\n' ;;
@@ -205,8 +242,17 @@ for formula in "${FORMULAE[@]}"; do
         continue
     fi
 
+    if bottle_gap="$(first_formula_without_bottle "$formula")"; then
+        report_status warn "$formula" "precompiled bottle unavailable"
+        warning_guidance+=(
+            "$formula|No compatible bottle is available for $bottle_gap.|Use a reviewed official precompiled Intel package or manage this tool manually; automatic source builds are disabled."
+        )
+        skipped_count=$((skipped_count + 1))
+        continue
+    fi
+
     if [[ "$MACBOOK_DRY_RUN" == "1" ]]; then
-        report_status info "$formula" "would install"
+        report_status info "$formula" "would install from bottle"
         continue
     fi
 
