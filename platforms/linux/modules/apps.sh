@@ -189,6 +189,12 @@ EOF
     success "Installed MacBook copy, paste, select-all, and window-switch mappings"
 
     if is_current_xfce_graphical_session; then
+        xfconf_set xfce4-keyboard-shortcuts \
+            "/xfwm4/custom/<Super>Left" string tile_left_key
+        xfconf_set xfce4-keyboard-shortcuts \
+            "/xfwm4/custom/<Super>Right" string tile_right_key
+        success "Mapped Super+Left and Super+Right to half-screen window tiling"
+
         pkill -x -u "$(id -u)" xbindkeys 2>/dev/null || true
 
         if xbindkeys; then
@@ -398,40 +404,44 @@ EOF
     success "Applied Qogir-Light, Qogir icons, one bottom panel, and Whisker Menu"
 }
 
-configure_xfce_panel_layout() {
+configure_xfce_quick_launchers() {
     if ! is_macbook_xfce_profile; then
-        echo "MacBook9,1 with XFCE not detected; skipping final XFCE panel layout."
+        echo "MacBook9,1 with XFCE not detected; skipping quick launchers."
         return
     fi
 
-    section "Applying final XFCE panel layout"
+    section "Configuring XFCE quick launchers"
 
     if ! is_current_xfce_graphical_session; then
-        warning "Final XFCE panel layout requires a live XFCE session; rerun full mode after login"
+        warning "Quick launchers require a live XFCE session; rerun full mode after login"
         return
     fi
 
+    xfconf_set xsettings /Xft/DPI int 144
+
     local panel_dir="$HOME/.config/xfce4/panel"
+    local balatro_desktop="$HOME/.local/share/applications/Balatro.desktop"
     local plugin_id
     local desktop_file
     local item
-    local -a plugin_ids=(101 102 103 104 105 106)
+    local -a plugin_ids=(101 102 103 104 105 106 107)
     local -a desktop_files=(
+        /usr/share/applications/firefox-esr.desktop
         /usr/share/applications/code.desktop
         /usr/share/applications/xfce4-terminal.desktop
-        /usr/share/applications/firefox-esr.desktop
-        /usr/share/applications/1password.desktop
+        /usr/share/applications/org.xfce.mousepad.desktop
         /usr/share/applications/thunar.desktop
-        "$HOME/.local/share/applications/Balatro.desktop"
+        /usr/share/applications/filezilla.desktop
+        "$balatro_desktop"
     )
 
     mkdir -p "$panel_dir" "$HOME/.local/share/applications"
 
-    if [[ ! -f "${desktop_files[5]}" ]]; then
-        install -m 0644 /dev/stdin "${desktop_files[5]}" <<'EOF'
+    if [[ ! -f "$balatro_desktop" ]]; then
+        install -m 0644 /dev/stdin "$balatro_desktop" <<'EOF'
 [Desktop Entry]
 Name=Balatro
-Comment=Play this game on Steam
+Comment=Play Balatro on Steam
 Exec=steam steam://rungameid/2379780
 Icon=steam_icon_2379780
 Terminal=false
@@ -440,19 +450,17 @@ Categories=Game;
 EOF
     fi
 
-    for plugin_id in "${plugin_ids[@]}"; do
-        xfconf-query -c xfce4-panel -p "/plugins/plugin-$plugin_id" -r -R \
-            2>/dev/null || true
-        rm -rf "$panel_dir/launcher-$plugin_id"
-    done
-
     for ((item = 0; item < ${#plugin_ids[@]}; item++)); do
         plugin_id="${plugin_ids[$item]}"
         desktop_file="${desktop_files[$item]}"
 
+        xfconf-query -c xfce4-panel -p "/plugins/plugin-$plugin_id" -r -R \
+            2>/dev/null || true
+        rm -rf "$panel_dir/launcher-$plugin_id"
+
         if [[ ! -f "$desktop_file" ]]; then
             warning "Quick-launch application is unavailable: $desktop_file"
-            return
+            continue
         fi
 
         mkdir -p "$panel_dir/launcher-$plugin_id"
@@ -466,27 +474,49 @@ EOF
     xfconf_set xfce4-panel /plugins/plugin-1 string whiskermenu
     xfconf_set xfce4-panel /plugins/plugin-2 string tasklist
     xfconf_set xfce4-panel /plugins/plugin-3 string separator
-    xfconf_set xfce4-panel /plugins/plugin-4 string pager
-    xfconf_set xfce4-panel /plugins/plugin-5 string separator
-    xfconf_set xfce4-panel /plugins/plugin-6 string systray
-    xfconf_set xfce4-panel /plugins/plugin-7 string separator
-    xfconf_set xfce4-panel /plugins/plugin-8 string clock
-    xfconf_set xfce4-panel /plugins/plugin-9 string separator
-    xfconf_set xfce4-panel /plugins/plugin-10 string actions
     xfconf_set xfce4-panel /plugins/plugin-3/expand bool true
-    xfconf_set xfce4-panel /panels/panel-1/size uint 46
-    xfconf_set xfce4-panel /panels/panel-1/icon-size uint 40
+    xfconf_set xfce4-panel /panels/panel-1/icon-size uint 28
 
     xfconf-query -c xfce4-panel -p /panels/panel-1/plugin-ids \
         -t int -s 1 \
-        -t int -s 101 -t int -s 102 -t int -s 103 \
-        -t int -s 104 -t int -s 105 -t int -s 106 \
+        -t int -s 101 -t int -s 102 -t int -s 103 -t int -s 104 \
+        -t int -s 105 -t int -s 106 -t int -s 107 \
         -t int -s 2 -t int -s 3 -t int -s 4 -t int -s 5 \
         -t int -s 6 -t int -s 7 -t int -s 8 -t int -s 9 \
         -t int -s 10
 
     xfce4-panel --restart
-    success "Applied 40-pixel quick launchers and the shared cross-OS panel layout"
+    success "Added Firefox, VS Code, Terminal, Mousepad, Thunar, FileZilla, and Balatro launchers"
+}
+
+configure_terminal_start_directory() {
+    section "Configuring the terminal start directory"
+
+    local bashrc="$HOME/.bashrc"
+    local start_marker="# BEGIN LarryBootstrap terminal start directory"
+    local end_marker="# END LarryBootstrap terminal start directory"
+    local temp
+
+    touch "$bashrc"
+    temp="$(mktemp)"
+    awk -v start="$start_marker" -v end="$end_marker" '
+        $0 == start { skip = 1; next }
+        $0 == end { skip = 0; next }
+        !skip { print }
+    ' "$bashrc" > "$temp"
+
+    cat >> "$temp" <<'EOF'
+
+# BEGIN LarryBootstrap terminal start directory
+if [[ $- == *i* && $PWD == "$HOME" && -d /mnt/larryshare/Projects ]]; then
+    cd /mnt/larryshare/Projects
+fi
+# END LarryBootstrap terminal start directory
+EOF
+
+    chmod --reference="$bashrc" "$temp"
+    mv "$temp" "$bashrc"
+    success "New interactive shells opened in home will start in /mnt/larryshare/Projects"
 }
 
 configure_vscode_codex() {

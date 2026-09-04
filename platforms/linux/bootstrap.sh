@@ -88,7 +88,8 @@ case "$MODE" in
         configure_user_groups
         enable_trim
         safe_package_cleanup
-        configure_xfce_panel_layout
+        configure_xfce_quick_launchers
+        configure_terminal_start_directory
         capture_audit
         ;;
 
@@ -96,10 +97,24 @@ case "$MODE" in
         capture_audit
         ;;
 
+    desktop)
+        require_debian
+        require_normal_user
+        acquire_sudo
+        wait_for_package_manager || exit 1
+        apt_repair
+        install_apt_packages "Installing desktop launcher applications" filezilla
+        configure_mac_keyboard_compatibility
+        configure_xfce_quick_launchers
+        configure_terminal_start_directory
+        capture_audit
+        ;;
+
     *)
         echo "Usage:"
         echo "  $0 core"
         echo "  $0 full"
+        echo "  $0 desktop"
         echo "  $0 audit"
         exit 2
         ;;

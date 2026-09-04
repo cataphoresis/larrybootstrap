@@ -201,14 +201,12 @@ capture_xfce_desktop_audit() {
             xfconf-query -c xfce4-panel -p /panels 2>&1 || true
             printf 'INFO: primary menu plugin: '
             xfconf-query -c xfce4-panel -p /plugins/plugin-1 2>&1 || true
-            printf 'INFO: panel size: '
-            xfconf-query -c xfce4-panel -p /panels/panel-1/size 2>&1 || true
             printf 'INFO: panel icon size: '
             xfconf-query -c xfce4-panel -p /panels/panel-1/icon-size 2>&1 || true
             printf 'INFO: panel plugin order: '
             xfconf-query -c xfce4-panel \
                 -p /panels/panel-1/plugin-ids 2>&1 || true
-            for plugin_id in 101 102 103 104 105 106; do
+            for plugin_id in 101 102 103 104 105 106 107; do
                 printf 'INFO: quick-launch plugin %s: ' "$plugin_id"
                 xfconf-query -c xfce4-panel \
                     -p "/plugins/plugin-$plugin_id/items" 2>&1 || true

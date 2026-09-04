@@ -59,6 +59,7 @@ FULL_PACKAGES=(
     # Lightweight development and text editing
     geany
     geany-plugins
+    filezilla
     gh
 
     # Android Platform Tools and USB permissions

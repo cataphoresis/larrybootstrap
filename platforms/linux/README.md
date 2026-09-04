@@ -31,6 +31,7 @@ the following X11 mappings:
 - Command+A selects all.
 - Command+Tab activates the next visible application window on the current desktop.
 - Command+Shift+Tab activates the previous visible application window.
+- Command+Left and Command+Right tile the active window to that half of the screen.
 
 Copy and paste are translated to Ctrl+Shift+C and Ctrl+Shift+V in
 `xfce4-terminal`; other applications receive Ctrl+C and Ctrl+V. Window switching
@@ -50,13 +51,20 @@ Codex CLI's image-paste handler when pasting text.
 ## XFCE appearance and VS Code
 
 Full mode installs the pinned Qogir-Light GTK theme and Qogir icon set from
-their upstream releases. It applies Inter at 144 DPI, keeps one 46-pixel panel
-at the bottom, replaces the Applications menu with Whisker Menu, and adds the
-transparent rounded dark Whisker styling from OpenDesktop item 1732225. After
-all applications are installed, a final pass adds 40-pixel quick launchers for
-VS Code, Terminal, Firefox, 1Password, Thunar, and Balatro before the task list.
-The original panel XML is retained as
+their upstream releases. It applies Inter as the desktop font at 144 DPI for
+the MacBook's HiDPI display, keeps one 34-pixel panel at the bottom, replaces
+the Applications menu with Whisker Menu, and adds the transparent rounded dark
+Whisker styling from OpenDesktop item 1732225. A final pass adds 28-pixel quick
+launchers for Firefox, VS Code, Terminal, Mousepad, Thunar, FileZilla, and
+Balatro before the task list. The original panel XML is retained as
 `xfce4-panel.xml.larrybootstrap-backup` before the first layout change.
+
+New interactive Bash shells that would otherwise open in the user's home
+directory start in `/mnt/larryshare/Projects`. Shells opened for a specific
+working directory retain that directory.
+
+Apply only these desktop customizations with `./bootstrap.sh desktop` from a
+live XFCE terminal.
 
 VS Code receives the official OpenAI Codex extension, Fira Code editor and
 terminal typography, and context-aware integrated-terminal copy/paste bindings.
