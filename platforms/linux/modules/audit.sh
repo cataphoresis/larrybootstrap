@@ -103,10 +103,14 @@ capture_audit() {
         printf 'active: '
         systemctl is-active ssh 2>&1 || true
         printf 'user-ed25519-key: '
-        if [[ -f "$HOME/.ssh/id_ed25519" ]]; then
-            echo "present"
+        if [[ -f "$HOME/.ssh/id_ed25519" ]] &&
+           ssh-keygen -lf "$HOME/.ssh/id_ed25519" 2>/dev/null |
+               grep -Eq '\(ED25519\)$| ED25519 '; then
+            echo "present and valid"
+            printf 'user-ed25519-fingerprint: '
+            ssh-keygen -lf "$HOME/.ssh/id_ed25519.pub" 2>&1 || true
         else
-            echo "absent"
+            echo "FAIL: absent or invalid"
         fi
     } > "$reports/ssh-summary.txt"
 

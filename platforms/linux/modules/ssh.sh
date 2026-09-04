@@ -47,11 +47,7 @@ CONFIG
             sudo systemctl reload ssh
     fi
 
-    if [[ -f "$HOME/.ssh/id_ed25519" ]]; then
-        echo "Existing user Ed25519 SSH key retained."
-    else
-        warning "No user Ed25519 SSH key found; no key was generated automatically"
-    fi
+    configure_user_ed25519_key || return 1
 
     echo
     echo "SSH status:"
@@ -68,4 +64,54 @@ CONFIG
         while read -r address; do
             echo "  ssh $USER@$address"
         done
+}
+
+configure_user_ed25519_key() {
+    local ssh_dir="$HOME/.ssh"
+    local private_key="$ssh_dir/id_ed25519"
+    local public_key="$private_key.pub"
+    local key_comment
+    local temp_public
+
+    key_comment="$USER@$(hostname)-larrybootstrap"
+
+    install -d -m 0700 "$ssh_dir"
+
+    if [[ ! -e "$private_key" ]]; then
+        if ssh-keygen -q -t ed25519 -N "" -C "$key_comment" -f "$private_key"; then
+            success "Generated the required user Ed25519 SSH key"
+        else
+            failure "Could not generate the required user Ed25519 SSH key"
+            return 1
+        fi
+    else
+        echo "Existing user Ed25519 SSH private key retained."
+    fi
+
+    if ! ssh-keygen -lf "$private_key" 2>/dev/null |
+         grep -Eq '\(ED25519\)$| ED25519 '; then
+        failure "$private_key is not a valid Ed25519 private key"
+        return 1
+    fi
+
+    if [[ ! -f "$public_key" ]]; then
+        temp_public="$(mktemp)"
+        if ssh-keygen -y -f "$private_key" > "$temp_public"; then
+            printf ' %s\n' "$key_comment" >> "$temp_public"
+            install -m 0644 "$temp_public" "$public_key"
+            success "Recreated the missing Ed25519 public key"
+        else
+            rm -f "$temp_public"
+            failure "Could not derive the Ed25519 public key"
+            return 1
+        fi
+        rm -f "$temp_public"
+    fi
+
+    chmod 0700 "$ssh_dir"
+    chmod 0600 "$private_key"
+    chmod 0644 "$public_key"
+
+    printf 'SSH key fingerprint: '
+    ssh-keygen -lf "$public_key"
 }

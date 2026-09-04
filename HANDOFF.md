@@ -95,8 +95,8 @@ Completed successfully on August 20, 2026. In a fresh VS Code session:
 - Command+C copied selected editor text.
 - Command+V pasted text in the integrated terminal.
 
-The only bootstrap warning was the absence of a user Ed25519 SSH key. No key was
-generated automatically; this is intentional and unrelated to the reboot gate.
+The historical post-reboot run warned that no user Ed25519 SSH key existed. The
+current bootstrap now requires and idempotently creates that key when absent.
 
 ## Execution note
 

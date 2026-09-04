@@ -103,12 +103,18 @@ ignored runtime directories.
   excluded from the bootstrap.
 - Optimization changes are made only after reviewing audit evidence.
 
+Core and full modes require a valid per-user Ed25519 SSH key. If
+`~/.ssh/id_ed25519` does not exist, the bootstrap creates it without a
+passphrase for noninteractive use, preserves existing private keys, and reports
+the resulting fingerprint. Apply only the SSH configuration and key policy with
+`./bootstrap.sh ssh`.
+
 ## Validation state
 
 The updated unified Linux full mode completed natively on Debian 13 on August
 20, 2026 with zero failures. The validated application summary reported Node.js
-`v20.19.2`, npm `9.2.0`, and Codex CLI `0.148.0`. The only warning was the
-intentional absence of an automatically generated user Ed25519 SSH key.
+`v20.19.2`, npm `9.2.0`, and Codex CLI `0.148.0`. At that validation point, the
+user Ed25519 key had not yet been made mandatory.
 
 Post-reboot validation in a fresh XFCE and VS Code session passed all managed
 Command+C and Command+V behaviors. The final audit completed with zero warnings

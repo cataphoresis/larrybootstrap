@@ -110,11 +110,20 @@ case "$MODE" in
         capture_audit
         ;;
 
+    ssh)
+        require_debian
+        require_normal_user
+        acquire_sudo
+        configure_ssh
+        capture_audit
+        ;;
+
     *)
         echo "Usage:"
         echo "  $0 core"
         echo "  $0 full"
         echo "  $0 desktop"
+        echo "  $0 ssh"
         echo "  $0 audit"
         exit 2
         ;;
