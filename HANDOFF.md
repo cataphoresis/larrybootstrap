@@ -1,11 +1,12 @@
 # LarryBootstrap Handoff
 
-Updated September 4, 2026 after completing and validating the Rosebook
-triple-boot recovery.
+Updated September 4, 2026 after completing the Rosebook triple-boot recovery
+and the final Debian desktop and SSH-key customizations.
 
 ## Current state
 
-Commit `419f664` is pushed to `origin/main`. It updates the macOS bootstrap to:
+Commit `2d168aa` is pushed to `origin/main`; the working tree was clean at
+handoff. The earlier macOS bootstrap work in `419f664`:
 
 - continue after Monterey blocks protected `com.apple.universalaccess`
   preference writes, reporting the required Terminal Full Disk Access action;
@@ -65,12 +66,11 @@ verified requirement explicitly calls for legacy BIOS booting.
 ## Linux validated state
 
 The Debian 13 full bootstrap and post-reboot audit completed successfully with
-zero warnings and zero failures. The final audit is recorded in the ignored
+zero warnings and zero failures. That historical final audit used the ignored
 runtime log and report paths:
 
 - `platforms/linux/logs/bootstrap-20260820-134945.log`
 - `platforms/linux/reports/20260820-134945`
-- `platforms/linux/reports/latest`
 
 The validated application summary includes Node.js `v20.19.2`, npm `9.2.0`,
 and the official Codex CLI `0.148.0`. The bootstrap now installs Node.js and npm
@@ -86,6 +86,26 @@ original panel configuration as `xfce4-panel.xml.larrybootstrap-backup`, and
 reloaded the Mac-style xbindkeys mappings. The final audit confirmed that
 xbindkeys is running in the fresh XFCE session.
 
+The September 4 desktop-only run added and visually validated a compact quick
+launch area in this order: Firefox, VS Code, Terminal, Mousepad, Thunar,
+FileZilla, and Balatro. XFCE uses 144 DPI, new interactive shells opened in home
+start in `/mnt/larryshare/Projects`, and Command/Super+Left and +Right tile the
+active window to the corresponding half of the screen. These settings are
+available through `./bootstrap.sh desktop` and are committed in `e7d351e`.
+
+Linux now requires a valid per-user Ed25519 SSH key. The focused
+`./bootstrap.sh ssh` run generated `~/.ssh/id_ed25519`, validated its type and
+permissions, reported its fingerprint, and confirmed that the SSH server is
+enabled and active. The idempotent policy is committed in `2d168aa`.
+
+Two non-blocking Debian cleanup items remain:
+
+- `reports/latest` cannot be created as a symbolic link because this checkout
+  resides on exFAT; timestamped audit reports are still written correctly; and
+- Raspberry Pi Imager is absent and therefore appears as failed in the
+  application-status table, although the focused desktop and SSH runs each
+  completed with zero bootstrap failures.
+
 ## Linux post-reboot validation
 
 Completed successfully on August 20, 2026. In a fresh VS Code session:
@@ -95,8 +115,26 @@ Completed successfully on August 20, 2026. In a fresh VS Code session:
 - Command+C copied selected editor text.
 - Command+V pasted text in the integrated terminal.
 
-The historical post-reboot run warned that no user Ed25519 SSH key existed. The
-current bootstrap now requires and idempotently creates that key when absent.
+The historical post-reboot run warned that no user Ed25519 SSH key existed.
+That condition is resolved by the required-key policy and successful focused
+SSH run described above.
+
+## Next macOS session
+
+Boot macOS through the verified rEFInd macOS entry, open an interactive
+Terminal, and pull `origin/main`. The next substantive work is:
+
+1. confirm the shared `LARRYSHARED` volume and repository are writable;
+2. install or reconcile Wireshark, Balena Etcher, and HandBrake for the
+   developer profile under the bottle-only Monterey policy;
+3. rerun the complete developer-profile bootstrap;
+4. rerun it a second time to verify idempotency; and
+5. review the final report, allowing only documented optional Rust/Tauri or
+   unavailable-compatible-bottle warnings.
+
+Do not alter the GPT, recreate a hybrid MBR, remove `OSXRESERVED`, or change EFI
+loaders during the macOS bootstrap work. The three operating systems and their
+rEFInd entries are already verified.
 
 ## Execution note
 
@@ -104,7 +142,5 @@ Run installation commands from an interactive terminal. A command runner with
 no TTY cannot display sudo's password prompt and fails at `sudo -v`; the VS Code
 integrated terminal works when the command is entered manually.
 
-The Linux changes were committed and pushed previously. The next macOS step is
-to install or reconcile the remaining developer-profile applications, rerun
-the full developer bootstrap, rerun it for idempotency, and confirm final
-verification without failures.
+The Linux and boot-recovery changes are committed and pushed. Continue with the
+macOS checklist above.
