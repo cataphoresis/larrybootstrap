@@ -1,5 +1,29 @@
 # Triple-Boot Partition Evaluation Handoff
 
+## Completion update — September 4, 2026
+
+The storage migration and boot recovery are complete. The internal Apple SSD is
+now approximately 465.9 GiB usable and has a valid GPT with a conventional
+protective MBR. rEFInd successfully boots macOS Monterey, Debian 13, and Windows
+10.
+
+Current Linux-visible layout:
+
+| Partition | Size | Filesystem/label | Purpose |
+|---|---:|---|---|
+| `/dev/nvme0n1p1` | 300 MiB | FAT32 `EFI` | Shared EFI System Partition |
+| `/dev/nvme0n1p2` | 94.2 GiB | APFS | macOS |
+| `/dev/nvme0n1p3` | 93.1 GiB | ext4 `root` | Debian |
+| `/dev/nvme0n1p6` | 174.9 GiB | exFAT `LARRYSHARED` | Cross-OS shared data |
+| `/dev/nvme0n1p4` | 9.3 GiB | exFAT `OSXRESERVED` | Boot Camp setup and Apple drivers |
+| `/dev/nvme0n1p5` | 94.0 GiB | NTFS `BOOTCAMP` | Windows 10 |
+
+The non-numeric physical ordering of partitions 6, 4, and 5 is valid GPT and
+must not be "corrected" by renumbering. `OSXRESERVED` remains intentionally
+preserved. The historical planning material below describes the earlier 256 GB
+layout and is retained only as recovery context; it is no longer a pending
+repartitioning plan.
+
 Use this handoff to continue in ChatGPT while booted into macOS on `linuxbook`.
 
 ## Bootloader recovery takes priority

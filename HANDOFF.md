@@ -1,7 +1,7 @@
 # LarryBootstrap Handoff
 
-Updated September 2, 2026 after macOS Monterey developer-tooling validation and
-the subsequent rEFInd installation problem.
+Updated September 4, 2026 after completing and validating the Rosebook
+triple-boot recovery.
 
 ## Current state
 
@@ -32,17 +32,35 @@ installation preflights the requested formula and missing dependencies; an
 unavailable compatible bottle becomes a warning and manual/precompiled-binary
 action rather than an automatic source compilation.
 
-## Immediate boot recovery handoff
+## Triple-boot recovery complete
 
-The attempted rEFInd installation did not complete successfully. Boot back into
-Debian before continuing bootstrap validation. Treat bootloader recovery as the
-immediate task and pause partition-layout work until normal boot selection is
-restored.
+rEFInd now presents one working entry each for macOS Monterey, Debian 13, and
+Windows 10. All three entries were boot-tested successfully on `rosebook`.
 
-Begin in Debian with read-only evidence: current UEFI boot entries, mounted EFI
-System Partition, block-device layout, and the contents of the EFI directory.
-Do not format the EFI System Partition, recreate the partition table, or remove
-Apple, Windows, Debian, or fallback EFI loaders while diagnosing rEFInd.
+Windows originally failed with `BlInitializeLibrary failed 0xc00000bb`. The
+internal 512 GB Apple SSD had a stale hybrid MBR, causing Windows PE to treat it
+as an MBR disk and expose only four of its six GPT partitions. Recovery:
+
+- backed up sector zero and the GPT metadata outside version control;
+- loaded `$WinPEDriver$/AppleSSD64/AppleSSD.inf` from the Boot Camp
+  `OSXRESERVED` staging partition in Windows recovery;
+- replaced the hybrid MBR with a conventional protective MBR while preserving
+  all six GPT partitions and filesystems;
+- assigned the 300 MiB EFI System Partition a temporary drive letter in Windows
+  recovery and rebuilt the Microsoft EFI boot environment with `bcdboot`; and
+- restored `EFI/Boot/bootx64.efi` to the verified Debian `grubx64.efi` fallback
+  after using that path for diagnosis.
+
+Post-repair `gdisk` and `sgdisk` validation reported a protective MBR, a valid
+GPT, all six partitions, and no problems. Windows recovery saw the internal
+disk as GPT, its BCD pointed to `EFI/Microsoft/Boot/bootmgfw.efi` and
+`Windows/System32/winload.efi`, and the final rEFInd Windows entry booted.
+
+`OSXRESERVED` remains intact because it contains Windows setup media and the
+Apple WinPE/Boot Camp drivers. The misleading `bootmgr.efi` entry from that
+volume and the obsolete legacy-Windows entry are not valid installed-Windows
+boot paths. Do not recreate a hybrid MBR unless a future, independently
+verified requirement explicitly calls for legacy BIOS booting.
 
 ## Linux validated state
 

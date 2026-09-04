@@ -1,4 +1,8 @@
 .DS_Store
+._*
+node_modules/
+nvme0n1-*.bin
+sector0-*.img
 
 platforms/*/backups/*
 platforms/*/logs/*
