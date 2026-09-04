@@ -84,7 +84,7 @@ ignored runtime directories.
 
 - Debian 13 package repair, default contrib/non-free/non-free-firmware
   repositories, updates, core/full package sets, and multiarch
-- Firefox, Chromium, VLC, Spotify, 1Password, Visual Studio Code, Geany,
+- Firefox, Chromium, VLC, Spotify, 1Password, Visual Studio Code, Geany, FileZilla,
   Moonlight, Heroic, Steam, Android platform tools, GitHub CLI, Node.js, npm,
   and the official OpenAI Codex CLI
 - SSH client/server configuration and homelab/networking utilities
