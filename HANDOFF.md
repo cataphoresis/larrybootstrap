@@ -1,5 +1,15 @@
 # September 11 parity and Debian power update
 
+## September 11 bootstrap parity follow-up
+
+Commit `e17cae4` is pushed to `origin/main`. It brings the three platform
+bootstraps into alignment for PIA, Tailscale, FFmpeg, ChatGPT, Python, Etcher,
+Firefox extension policy, authenticated SMB shares, SSH, APFS compatibility,
+and native quick-launch scripts. Retired media/development tools (HandBrake,
+MakeMKV, MKVToolNix, yt-dlp, Rust/Tauri, Heroic, and Geany) are no longer part
+of the active bootstrap paths. Documentation and implementation should be
+updated together when these platform contracts change.
+
 The approved Debian panel size is now 72 pixels with 60-pixel icons, applied
 live and encoded in both appearance and quick-launch setup. The earlier
 48/40 values and custom 1Password SVG had survived reboot; no icon repair was
@@ -19,7 +29,7 @@ focused installation is `bash bootstrap.sh tailscale`, followed by separate
 `sudo tailscale up` sign-in. Debian installation and authentication were completed by the user and verified
 on September 11: Tailscale 1.102.4, tailscaled enabled/active, backend Running.
 See PLATFORM_PARITY.md for the full comparison and other parity corrections.
-All existing September 9 work is preserved; this work remains uncommitted.
+All existing September 9 work is preserved in the subsequent parity commits.
 
 # September 9 desktop update
 

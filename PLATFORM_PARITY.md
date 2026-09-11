@@ -46,12 +46,12 @@ every OS. OS plumbing such as APT, WinGet and Homebrew is intentionally native.
 
 | Application or utility group | Coverage in the bootstrap |
 |---|---|
-| Private Internet Access | Windows standard; macOS developer/homelab; absent Debian |
+| Private Internet Access | Windows standard; Debian core/full/workstation/desktop; macOS developer/homelab |
 | Wireshark | Debian full; macOS developer/homelab; absent Windows |
 | Raspberry Pi Imager | Debian installer; macOS manual-app intent in developer/homelab; absent Windows |
-| Balena Etcher | Debian installer; macOS developer/homelab; absent Windows |
-| FFmpeg | Debian core; macOS standard/developer compatibility path and homelab formula; absent Windows |
-| Python | Debian full; macOS developer/homelab; absent Windows standard |
+| Balena Etcher | Debian installer; macOS developer/homelab; Windows latest GitHub release |
+| FFmpeg | Debian core; macOS profiles; Windows standard |
+| Python | Debian full; macOS developer/homelab; Windows standard |
 | CMake / pkg-config | macOS developer explicitly; Debian build-essential is not equivalent; absent Windows |
 | PowerToys / FancyZones / Workspaces | Windows only; Rectangle supplies window tiling on macOS; custom XFCE bindings on Debian |
 | Stats / Amphetamine | macOS; Amphetamine is manual in standard/developer |
@@ -69,10 +69,10 @@ every OS. OS plumbing such as APT, WinGet and Homebrew is intentionally native.
 |---|---|---|---|
 | Tailscale service/app | Vendor installer | Enables `tailscaled` | Vendor app; user launches/approves extension |
 | Tailscale account and routing | User sign-in | User `sudo tailscale up` | User sign-in |
-| SSH server + required Ed25519 key | No corresponding stage | Configures server and key | No corresponding stage |
+| SSH server + required Ed25519 key | No corresponding stage | Configures server and key | Enables Remote Login |
 | SSD TRIM | Native OS behavior | Enables periodic fstrim | Native OS behavior |
 | Filesystem integration | Separate compatibility stage | BOOTCAMP NTFS; conservative APFS handling | No equivalent mounting stage |
-| Firefox extension policy | uBlock Origin, SponsorBlock, Privacy Badger, 1Password | Not managed | Not managed |
+| Firefox extension policy | Shared mandatory five-extension policy | Shared mandatory five-extension policy | Shared mandatory five-extension policy |
 | VS Code fonts/theme/keybindings | Installs extension; no matching typography setup | Fira Code, dark theme, contextual terminal copy/paste | Installs extension; no matching typography setup |
 | Shell experience | Managed PowerShell profile, history, editor, shortcut; `~/Projects` | Interactive home shells start in shared Projects | No equivalent shell profile stage |
 | Desktop theme / fonts | Windows settings | Qogir/Inter/Fira Code, 144 DPI, Whisker | Native defaults |
@@ -86,10 +86,9 @@ every OS. OS plumbing such as APT, WinGet and Homebrew is intentionally native.
 ## Quick launch and panel findings
 
 The common order is Firefox, VS Code, terminal, lightweight editor, file browser,
-FileZilla, 1Password, Spotify, Balatro. On macOS Finder is first, then the other
-eight in order. The focused scripts implement this intent, but only Debian
-currently invokes launcher setup from its full bootstrap. Windows/macOS scripts
-remain explicit follow-up commands; this is a remaining integration gap.
+FileZilla, 1Password, Spotify, Balatro. Debian invokes launcher setup from its
+desktop/full paths; Windows and macOS expose focused launcher scripts for their
+native taskbar/Dock layouts.
 
 Windows uses a taskbar layout policy and needs a sign-out/in and native review.
 macOS uses dockutil, keeps unrelated pins after managed ones and requires all
