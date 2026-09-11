@@ -93,3 +93,19 @@ larry_guidance() {
     printf '  %s%s%s\n' \
         "$LARRY_DARK_GRAY" "$*" "$LARRY_RESET"
 }
+
+# Preserve the Intel Monterey direct-binary policy; ARM uses bottled FFmpeg.
+normalize_native_profile() {
+    if [[ "$(uname -m)" == arm64 ]] && declare -p MANUAL_FORMULAE >/dev/null 2>&1; then
+        local formula
+        local -a remaining=()
+        for formula in "${MANUAL_FORMULAE[@]}"; do
+            if [[ "$formula" == ffmpeg ]]; then
+                FORMULAE+=(ffmpeg)
+            else
+                remaining+=("$formula")
+            fi
+        done
+        MANUAL_FORMULAE=("${remaining[@]}")
+    fi
+}

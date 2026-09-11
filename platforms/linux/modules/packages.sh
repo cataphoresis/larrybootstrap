@@ -7,12 +7,25 @@ CORE_PACKAGES=(
     gnupg
     jq
     git
+    snapd
+    samba
+    libatomic1
+    libfuse3-4
+    libbz2-1.0
+    zlib1g
+    libstdc++6
     rsync
+    gvfs-backends
+    smbclient
     unzip
     zip
     p7zip-full
     file-roller
     firefox-esr
+    chromium
+    mousepad
+    thunar
+    xfce4-terminal
     vlc
     ffmpeg
     mediainfo
@@ -57,8 +70,6 @@ FULL_PACKAGES=(
     npm
 
     # Lightweight development and text editing
-    geany
-    geany-plugins
     filezilla
     gh
 

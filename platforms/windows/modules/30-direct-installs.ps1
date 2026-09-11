@@ -68,7 +68,18 @@ function Test-AllowedDownloadHost {
 function Resolve-DirectDownloadUri {
     param([Parameter(Mandatory)][pscustomobject]$Package)
 
+    $script:ResolvedAssetDigest = $null
     $RequestedUri = [uri][string]$Package.downloadUri
+    if ($Package.PSObject.Properties.Name -contains "githubRepository") {
+        if ($Package.githubRepository -ne 'balena-io/etcher') { throw 'Unexpected release repository' }
+        $Release = Invoke-RestMethod -Uri "https://api.github.com/repos/$($Package.githubRepository)/releases/latest"
+        $Assets = @($Release.assets | Where-Object { $_.name -match $Package.assetNamePattern })
+        if ($Assets.Count -ne 1) { throw 'Expected exactly one Windows Etcher Setup.exe release asset' }
+        $RequestedUri = [uri]$Assets[0].browser_download_url
+        if ($Assets[0].PSObject.Properties.Name -contains 'digest') {
+            $script:ResolvedAssetDigest = $Assets[0].digest
+        }
+    }
     $AllowedHosts = @($Package.allowedDownloadHosts)
 
     if (-not (Test-AllowedDownloadHost -Uri $RequestedUri -Patterns $AllowedHosts)) {
@@ -96,6 +107,11 @@ function Install-DirectPackage {
         Write-InfoLine $Package.name "downloading from $($DownloadUri.DnsSafeHost)"
         Invoke-WebRequest -Uri $DownloadUri -OutFile $TemporaryPath -UseBasicParsing
 
+        if ($script:ResolvedAssetDigest -match '^sha256:([0-9a-fA-F]{64})$') {
+            if ((Get-FileHash -Algorithm SHA256 -LiteralPath $TemporaryPath).Hash -ne $Matches[1]) {
+                throw 'GitHub release asset checksum mismatch'
+            }
+        }
         $Header = [byte[]]::new(2)
         $Stream = [IO.File]::OpenRead($TemporaryPath)
 

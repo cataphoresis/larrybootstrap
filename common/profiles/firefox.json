@@ -1,0 +1,29 @@
+{
+  "extensions": [
+    {
+      "name": "1Password",
+      "id": "{d634138d-c276-4fc8-924b-40a0ea21d284}",
+      "install_url": "https://addons.mozilla.org/firefox/downloads/latest/1password-x-password-manager/latest.xpi"
+    },
+    {
+      "name": "uBlock Origin",
+      "id": "uBlock0@raymondhill.net",
+      "install_url": "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi"
+    },
+    {
+      "name": "SponsorBlock",
+      "id": "sponsorBlocker@ajay.app",
+      "install_url": "https://addons.mozilla.org/firefox/downloads/latest/sponsorblock/latest.xpi"
+    },
+    {
+      "name": "Privacy Badger",
+      "id": "jid1-MnnxcxisBPnSXQ@jetpack",
+      "install_url": "https://addons.mozilla.org/firefox/downloads/latest/privacy-badger17/latest.xpi"
+    },
+    {
+      "name": "ChatGPT Export",
+      "id": "{149e2c13-2556-4e9f-ad37-05ccb2f8676d}",
+      "install_url": "https://addons.mozilla.org/firefox/downloads/latest/chatgpt-export/latest.xpi"
+    }
+  ]
+}

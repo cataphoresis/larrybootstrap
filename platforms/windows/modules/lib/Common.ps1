@@ -443,7 +443,10 @@ function Get-WinGetVerificationDisposition {
 
 function Invoke-WinGetPackageAsInteractiveUser {
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$PackageId)
+    param(
+        [Parameter(Mandatory)][string]$PackageId,
+        [ValidateSet("winget", "msstore")][string]$Source = "winget"
+    )
 
     $Helper = Join-Path $PSScriptRoot "..\Invoke-UserWingetInstall.ps1"
     $Token = [guid]::NewGuid().ToString("N")
@@ -456,6 +459,7 @@ function Invoke-WinGetPackageAsInteractiveUser {
         "-NoLogo", "-NoProfile", "-ExecutionPolicy", "Bypass",
         "-File", ('"{0}"' -f $Helper),
         "-PackageId", ('"{0}"' -f $PackageId),
+        "-Source", $Source,
         "-ResultPath", ('"{0}"' -f $ResultPath),
         "-LogPath", ('"{0}"' -f $LogPath)
     ) -join " "

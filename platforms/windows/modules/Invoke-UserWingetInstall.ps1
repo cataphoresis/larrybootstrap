@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory)][string]$PackageId,
     [Parameter(Mandatory)][string]$ResultPath,
-    [Parameter(Mandatory)][string]$LogPath
+    [Parameter(Mandatory)][string]$LogPath,
+    [ValidateSet("winget", "msstore")][string]$Source = "winget"
 )
 
 Set-StrictMode -Version Latest
@@ -31,10 +32,11 @@ if ($Elevated) {
 
 $WinGet = (Get-Command winget.exe -ErrorAction Stop).Source
 $Arguments = @(
-    "install", "--id", $PackageId, "--exact", "--scope", "user",
+    "install", "--id", $PackageId, "--exact", "--source", $Source,
     "--accept-package-agreements", "--accept-source-agreements",
     "--disable-interactivity"
 )
+if ($Source -eq "winget") { $Arguments += @("--scope", "user") }
 $StartInfo = [Diagnostics.ProcessStartInfo]::new()
 $StartInfo.FileName = $WinGet
 $StartInfo.UseShellExecute = $false

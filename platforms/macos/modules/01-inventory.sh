@@ -190,7 +190,7 @@ fi
 
 section "Developer Environment"
 
-for tool in git rustc cargo node npm python3; do
+for tool in git node npm python3; do
     if command_exists "$tool"; then
         {
             printf 'Path: '

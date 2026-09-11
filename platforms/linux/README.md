@@ -9,6 +9,9 @@ Core installation:
 
     ./bootstrap.sh core
 
+The initial core APT package set includes `gvfs-backends` and `smbclient` for
+SMB network-share browsing and command-line access in both core and full modes.
+
 Full workstation installation:
 
     ./bootstrap.sh full
@@ -52,10 +55,10 @@ Codex CLI's image-paste handler when pasting text.
 
 Full mode installs the pinned Qogir-Light GTK theme and Qogir icon set from
 their upstream releases. It applies Inter as the desktop font at 144 DPI for
-the MacBook's HiDPI display, keeps one 34-pixel panel at the bottom, replaces
+the MacBook's HiDPI display, keeps one 72-pixel panel at the bottom, replaces
 the Applications menu with Whisker Menu, and adds the transparent rounded dark
-Whisker styling from OpenDesktop item 1732225. A final pass adds 28-pixel quick
-launchers for Firefox, VS Code, Terminal, Mousepad, Thunar, FileZilla, and
+Whisker styling from OpenDesktop item 1732225. A final pass adds 60-pixel quick
+launchers for Firefox, VS Code, Terminal, Mousepad, Thunar, FileZilla, 1Password, Spotify, and
 Balatro before the task list. The original panel XML is retained as
 `xfce4-panel.xml.larrybootstrap-backup` before the first layout change.
 
@@ -64,7 +67,9 @@ directory start in `/mnt/larryshare/Projects`. Shells opened for a specific
 working directory retain that directory.
 
 Apply only these desktop customizations with `./bootstrap.sh desktop` from a
-live XFCE terminal.
+live XFCE terminal. For only panel sizing and launcher order, run
+`bash platforms/linux/quick-launch.sh` from the repository root; this saves a
+timestamped backup under `~/.local/state/larrybootstrap/` first.
 
 VS Code receives the official OpenAI Codex extension, Fira Code editor and
 terminal typography, and context-aware integrated-terminal copy/paste bindings.
@@ -84,8 +89,8 @@ ignored runtime directories.
 
 - Debian 13 package repair, default contrib/non-free/non-free-firmware
   repositories, updates, core/full package sets, and multiarch
-- Firefox, Chromium, VLC, Spotify, 1Password, Visual Studio Code, Geany, FileZilla,
-  Moonlight, Heroic, Steam, Android platform tools, GitHub CLI, Node.js, npm,
+- Firefox, Chromium, VLC, Spotify, 1Password, Visual Studio Code, Mousepad, FileZilla,
+  Moonlight, Steam, Android platform tools, GitHub CLI, Node.js, npm,
   and the official OpenAI Codex CLI
 - SSH client/server configuration and homelab/networking utilities
 - SSD TRIM, BOOTCAMP NTFS integration, and conservative APFS handling
@@ -119,3 +124,47 @@ user Ed25519 key had not yet been made mandatory.
 Post-reboot validation in a fresh XFCE and VS Code session passed all managed
 Command+C and Command+V behaviors. The final audit completed with zero warnings
 and zero failures, including the live xbindkeys process check.
+
+## Tailscale and laptop power
+
+Core and full modes install Tailscale from its official Debian 13 APT
+repository and enable `tailscaled`. Run only this step with
+`bash ../../bootstrap.sh tailscale` from this folder, or
+`bash bootstrap.sh tailscale` from the repository root. Run in an interactive
+terminal for sudo. First-time account sign-in is separate: `sudo tailscale up`.
+The installer does not change existing tailnet routing, DNS, or SSH options.
+
+MacBook XFCE core/full/desktop modes explicitly set lid-close to suspend on AC
+and battery, with screen locking. The focused command from the repository root
+is `bash platforms/linux/power-settings.sh`; it backs up previous power settings.
+XFCE 4.20 otherwise defaults to locking the screen without suspending.
+The audit records battery, sleep-mode, swap, power-manager and Tailscale status.
+Hibernate is not configured automatically: it needs swap and resume validation.
+
+The panel standard is 72 physical pixels with 60-pixel icons at 144 DPI. The
+September 11 check found the previous 48/40 settings had survived reboot; those
+sizes were still too small at the panel's native 2304×1440 resolution.
+
+## Expanded workstation setup
+
+`bash bootstrap.sh workstation` from the repository root applies the focused
+workstation additions in an interactive terminal. It installs the core APT set
+(including Git, snapd, Samba, gvfs-backends and smbclient), PIA, official ChatGPT
+desktop, precompiled APFS tools, and Raspberry Pi Imager via Snap. It applies
+the shared mandatory Firefox extensions, SSH login, and authenticated SMB shares.
+Full mode includes these steps; core includes PIA/ChatGPT/APFS/browser/sharing.
+
+PIA uses the reviewed vendor 3.7.2 installer with its published SHA-256. Sign in
+through PIA afterward. ChatGPT uses OpenAI's official Debian package and its
+subsequent repository updates. Pi Imager uses `sudo snap install rpi-imager`.
+Existing non-Snap Imager installs are retained but do not satisfy Snap detection.
+
+`OS` exports `/` read-only as your normal user; `LarryShare` exports the mounted
+`/mnt/larryshare` read/write. No guest or root impersonation is enabled. Set
+`LARRY_SHARE_PATH` to use a different mounted path. First-time Samba password
+setup prompts locally through `smbpasswd`; credentials are not stored in files.
+
+The included APFS binaries are a locally built Debian 13 amd64 artifact with
+checksums, matching source and licenses under `assets/apfs-fuse`. It is not an
+upstream binary release. The installer validates dependencies and installs only
+the read-only tools; it does not mount or alter partitions.

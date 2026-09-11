@@ -32,6 +32,7 @@ $files = @(
     'packaging/windows/README-WINDOWS.md'
     'packaging/windows/RELEASE_NOTES.md'
     'common/profiles/standard.json'
+    'common/profiles/firefox.json'
 )
 
 foreach ($relativePath in $files) {

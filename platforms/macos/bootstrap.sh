@@ -122,6 +122,8 @@ MODULES=(
     "15-compat-tools.sh"
     "20-defaults.sh"
     "25-filezilla.sh"
+    "30-workstation.sh"
+    "35-network-sharing.sh"
     "90-verify.sh"
 )
 

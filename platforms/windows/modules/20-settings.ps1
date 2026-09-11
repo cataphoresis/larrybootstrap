@@ -222,7 +222,7 @@ Write-Section "Taskbar and Search"
 Set-RegistrySetting `
     -Path $ExplorerAdvanced `
     -Name "TaskbarSmallIcons" `
-    -Value 1 `
+    -Value 0 `
     -Type DWord `
     -Label "Small taskbar icons"
 

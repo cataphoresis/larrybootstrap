@@ -207,3 +207,44 @@ clean-install gate remains an exact Windows standard-profile installation on a
 separate physical machine or full VM, followed by idempotency and final
 verification. Do not retire the standalone recovery repositories before both
 tasks pass.
+
+## Bottom launcher standard
+
+The ordered launchers are Firefox, Visual Studio Code, Terminal/PowerShell 7,
+Mousepad/CotEditor/Notepad++, Thunar/Finder/Explorer, FileZilla, 1Password,
+Spotify, and Balatro (Steam app 2379780). On macOS, keep the built-in Finder
+first, followed by the remaining eight applications in that order.
+
+Focused setup commands from the repository root:
+
+- Debian XFCE: `bash platforms/linux/quick-launch.sh` applies a 72-pixel panel
+  with 60-pixel icons and backs up the existing configuration. Full and desktop
+  modes use these same sizes and launcher order.
+- macOS: `bash platforms/macos/quick-launch.sh` requires installed applications
+  and [dockutil](https://github.com/kcrawford/dockutil/releases). It backs up
+  Dock preferences, orders the managed apps after Finder, retains other pins
+  afterward, and sets a 48-pixel bottom Dock. CotEditor is the shared profile's
+  macOS editor. Install Balatro through Steam first.
+- Windows: `./platforms/windows/quick-launch.ps1` from PowerShell prepares the
+  current user's ordered taskbar policy; `-WhatIf` previews without changes.
+  Applications and their Start menu shortcuts must already exist. Sign out and
+  back in to apply. This replaces default pins using Microsoft's
+  [taskbar layout policy](https://learn.microsoft.com/en-us/windows/configuration/taskbar/pinned-apps),
+  which can reapply pins at sign-in and manages the Start layout policy too.
+  Existing policy values and generated layouts are backed up under
+  `%LOCALAPPDATA%\LarryBootstrap\Taskbar`. Windows settings now disable small
+  taskbar icons. The script targets the Windows 10 workstation; policy support
+  and appearance must be validated natively.
+
+The macOS and Windows focused scripts are not automatically run by a full
+bootstrap. Run them once on their respective operating systems after installing
+all launcher applications. Native validation remains pending on both systems.
+
+## Cross-platform parity review
+
+See [PLATFORM_PARITY.md](PLATFORM_PARITY.md) for the September 11 source-level
+comparison, corrected omissions, remaining differences, and native validation
+limits. The shared JSON is an intent document; native manifests and modules
+perform installation. Tailscale is now declared on all three platforms. macOS
+standard/developer/homelab profiles now include the existing Codex CLI and VS
+Code extension setup, with compatibility-managed Node.js.

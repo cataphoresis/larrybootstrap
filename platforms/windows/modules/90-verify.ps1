@@ -294,7 +294,7 @@ else {
 
 Write-Section "Browser Configuration"
 
-$BrowserSchemaPath = Join-Path $Root "schema\browser.json"
+$BrowserSchemaPath = Join-Path $Root "..\..\common\profiles\firefox.json"
 $FirefoxPath = Test-ApplicationPath -Paths @(
     "$env:ProgramFiles\Mozilla Firefox\firefox.exe",
     "${env:ProgramFiles(x86)}\Mozilla Firefox\firefox.exe"
@@ -316,17 +316,17 @@ else {
         try {
             $BrowserSchema = Get-Content -LiteralPath $BrowserSchemaPath -Raw | ConvertFrom-Json
             $Policy = Get-Content -LiteralPath $PolicyPath -Raw | ConvertFrom-Json
-            $ConfiguredUrls = @($Policy.policies.Extensions.Install)
             $MissingExtensions = @(
-                $BrowserSchema.firefoxExtensions |
-                    Where-Object { $_.installUrl -notin $ConfiguredUrls }
+                foreach ($Extension in $BrowserSchema.extensions) {
+                    $Entry = $Policy.policies.ExtensionSettings.PSObject.Properties[$Extension.id]
+                    if (-not $Entry -or $Entry.Value.installation_mode -ne 'force_installed' -or
+                        $Entry.Value.install_url -ne $Extension.install_url) { $Extension.name }
+                }
             )
-
             if ($MissingExtensions.Count -eq 0) {
-                Record-OK "Firefox extensions" "$($ConfiguredUrls.Count) managed installations"
-            }
-            else {
-                Record-Fail "Firefox extensions" "missing policy entries: $($MissingExtensions.name -join ', ')"
+                Record-OK "Firefox extensions" "all five mandatory extensions configured"
+            } else {
+                Record-Fail "Firefox extensions" "missing mandatory entries: $($MissingExtensions -join ', ')"
             }
         }
         catch {
@@ -345,6 +345,23 @@ if ($DefaultProgId -match '^FirefoxURL') {
 }
 else {
     Record-Warn "Default browser" "Firefox is not the HTTPS default"
+}
+
+Write-Section "ChatGPT and SMB"
+if (Test-WinGetPackageInstalled -Id '9PLM9XGG6VKS') {
+    Record-OK 'ChatGPT desktop' 'current Microsoft Store app installed'
+} else {
+    Record-Fail 'ChatGPT desktop' 'missing; run the ChatGPT desktop stage'
+}
+foreach ($ShareName in @('OS', 'LarryShare')) {
+    $Share = Get-SmbShare -Name $ShareName -ErrorAction SilentlyContinue
+    if ($Share) {
+        Record-OK "SMB $ShareName" $Share.Path
+        $Access = @(Get-SmbShareAccess -Name $ShareName)
+        if ($ShareName -eq 'OS' -and @($Access | Where-Object { $_.AccessControlType -eq 'Allow' -and $_.AccessRight -ne 'Read' }).Count -gt 0) {
+            Record-Fail 'OS share access' 'expected read-only permissions'
+        }
+    } else { Record-Fail "SMB $ShareName" 'share is missing' }
 }
 
 Write-Section "PowerToys Workspaces"

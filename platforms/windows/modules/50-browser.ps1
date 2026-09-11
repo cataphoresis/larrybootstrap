@@ -6,7 +6,7 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $PSScriptRoot
 . "$PSScriptRoot\lib\Common.ps1"
 
-$SchemaPath = Join-Path $Root "schema\browser.json"
+$SchemaPath = Join-Path $Root "..\..\common\profiles\firefox.json"
 $Schema = Get-Content -LiteralPath $SchemaPath -Raw | ConvertFrom-Json
 $Timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
 $BackupRoot = Join-Path $Root "backups\browser-$Timestamp"
@@ -84,8 +84,15 @@ if (-not $Policy.ContainsKey("policies")) {
     $Policy["policies"] = @{}
 }
 
-$InstallUrls = @($Schema.firefoxExtensions | ForEach-Object { [string]$_.installUrl })
-$Policy["policies"]["Extensions"] = @{ Install = $InstallUrls }
+if (-not $Policy["policies"].ContainsKey("ExtensionSettings")) {
+    $Policy["policies"]["ExtensionSettings"] = @{}
+}
+foreach ($Extension in $Schema.extensions) {
+    $Policy["policies"]["ExtensionSettings"][$Extension.id] = @{
+        installation_mode = "force_installed"
+        install_url = $Extension.install_url
+    }
+}
 $Policy["policies"]["DisableFirefoxStudies"] = $true
 $Policy["policies"]["DontCheckDefaultBrowser"] = $false
 
@@ -116,7 +123,7 @@ else {
     Record-OK "Firefox policy" "already configured"
 }
 
-foreach ($Extension in $Schema.firefoxExtensions) {
+foreach ($Extension in $Schema.extensions) {
     Record-OK $Extension.name "managed installation configured"
 }
 

@@ -136,10 +136,11 @@ support common USB flash-drive or SD-card readers. Generic `ro` is not accepted
 by `wsl --mount`; advanced read-only use requires `--bare` followed by a
 read-only mount inside Linux.
 
-Windows has no Microsoft-supplied APFS filesystem driver. The bootstrap does
-not install third-party APFS drivers automatically. Prefer macOS file sharing,
-an exFAT exchange volume, or network transfer; evaluate any read-only
-third-party driver manually before trusting important data to it.
+Windows APFS access uses optional `Paragon.APFS` from WinGet. This is a
+commercial trial, not freeware: activate a license for continued use and choose
+read-only access before browsing the Mac volume. DiskGenius is included for
+advanced partition management; its free edition is not open source. Neither
+tool is invoked to modify disks by the bootstrap.
 
 Each module writes a timestamped report under `reports/`. Modules are run in
 separate PowerShell processes so that each module's exit code cleanly stops the
@@ -153,4 +154,27 @@ without allowing repeated runs to consume space indefinitely.
 
 - Windows: Notepad++
 - macOS: CotEditor
-- Linux: Geany
+- Linux: Mousepad
+
+## Ordered bottom launchers
+
+See the [shared launcher standard](../../README.md#bottom-launcher-standard)
+for the focused setup command, prerequisites, backups, and platform behavior.
+
+## Expanded workstation setup
+
+The standard manifest includes FFmpeg, Python 3.13, DiskGenius and optional
+Paragon APFS. Etcher resolves the latest `balena-io/etcher` GitHub release's
+Windows Setup.exe, checks its SHA-256 when published and validates Authenticode
+before installation. Missing/ambiguous assets or invalid signatures fail safely.
+
+The current official ChatGPT desktop is Microsoft Store product `9PLM9XGG6VKS`,
+installed with a non-elevated interactive-user task. It is not ChatGPT Classic.
+The shared Firefox manifest enforces 1Password, uBlock Origin, SponsorBlock,
+Privacy Badger and ChatGPT Export. Restart Firefox after applying policy.
+
+The SMB stage creates authenticated `OS` (read-only) and `LarryShare` (read/write)
+shares for the current account and adds a private-LAN TCP 445 firewall rule.
+LarryShare is found by volume label LARRYSHARED/LARRYSHARE, or set
+`LARRY_SHARE_PATH` explicitly. Existing unmanaged shares are not overwritten.
+Use the Windows account password for SMB, not a Windows Hello PIN.

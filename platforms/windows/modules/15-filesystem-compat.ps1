@@ -63,7 +63,7 @@ Write-Section "APFS Access"
 
 Record-Warn "Native APFS support" "Windows has no Microsoft-supplied APFS filesystem driver"
 Record-Info "Recommended access" "use macOS file sharing, an exFAT exchange volume, or copy through the network"
-Record-Info "Third-party drivers" "not installed automatically; evaluate read-only tooling manually before trusting data"
+Record-Info "Third-party drivers" "Paragon APFS is included as an optional trial; activate a license and select read-only access before browsing APFS"
 
 Write-Section "Shared NTFS Safety"
 

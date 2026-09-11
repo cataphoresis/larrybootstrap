@@ -77,10 +77,6 @@ ffprobe_version() {
         awk 'NR == 1 {print $3; exit}'
 }
 
-ytdlp_version() {
-    yt-dlp --version 2>/dev/null |
-        head -n 1
-}
 
 node_version() {
     node --version 2>/dev/null |
@@ -185,40 +181,6 @@ install_ffmpeg_tools() {
     fi
 }
 
-install_ytdlp() {
-    local tmp_file
-
-    tmp_file="$(mktemp)"
-
-    if ! curl --fail --location \
-        https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos \
-        --output "$tmp_file"
-    then
-        report_status fail "yt-dlp" "download failed"
-        rm -f "$tmp_file"
-        failed_count=$((failed_count + 1))
-        return
-    fi
-
-    chmod 755 "$tmp_file"
-
-    if ! "$tmp_file" --version >/dev/null 2>&1; then
-        report_status fail "yt-dlp" "downloaded binary failed execution"
-        rm -f "$tmp_file"
-        failed_count=$((failed_count + 1))
-        return
-    fi
-
-    if sudo install -m 755 "$tmp_file" /usr/local/bin/yt-dlp; then
-        report_status ok "yt-dlp" "$(ytdlp_version)"
-        installed_count=$((installed_count + 1))
-    else
-        report_status fail "yt-dlp" "installation failed"
-        failed_count=$((failed_count + 1))
-    fi
-
-    rm -f "$tmp_file"
-}
 
 install_node() {
     local node_release="v22.23.2"
@@ -309,6 +271,7 @@ fi
 
 # shellcheck disable=SC1090
 source "$PROFILE_FILE"
+    normalize_native_profile
 manual_formula_requested() {
     local requested="$1"
     local formula
@@ -352,21 +315,6 @@ fi
 
 fi
 
-if manual_formula_requested yt-dlp; then
-if command -v yt-dlp >/dev/null 2>&1; then
-    report_status ok "yt-dlp" "$(ytdlp_version)"
-    present_count=$((present_count + 1))
-else
-    if [[ "$MACBOOK_DRY_RUN" == "1" ]]; then
-        report_status info "yt-dlp" "would install standalone binary"
-    else
-        larry_stage "Install standalone yt-dlp"
-        install_ytdlp
-    fi
-fi
-
-fi
-
 if manual_formula_requested node; then
     if command -v node >/dev/null 2>&1; then
         report_status ok "node" "$(node_version)"
@@ -381,7 +329,7 @@ if manual_formula_requested node; then
     fi
 fi
 
-if [[ "$PROFILE" == "developer" ]]; then
+if [[ "$PROFILE" != "minimal" ]]; then
     section "OpenAI Developer Tools"
 
     if ! command -v code >/dev/null 2>&1; then

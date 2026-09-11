@@ -92,10 +92,12 @@ $Pipeline = @(
     [pscustomobject]@{ Name = "Filesystem compat"; File = "15-filesystem-compat.ps1"; Arguments = @() },
     [pscustomobject]@{ Name = "Windows settings"; File = "20-settings.ps1";        Arguments = @() },
     [pscustomobject]@{ Name = "Direct installs";  File = "30-direct-installs.ps1"; Arguments = @("-Profile", $Profile) },
+    [pscustomobject]@{ Name = "SMB sharing"; File = "35-network-sharing.ps1"; Arguments = @() },
     [pscustomobject]@{ Name = "Larry PowerShell"; File = "40-powershell.ps1";      Arguments = @() },
     [pscustomobject]@{ Name = "Browser setup";     File = "50-browser.ps1";         Arguments = @() },
     [pscustomobject]@{ Name = "PowerToys setup";   File = "60-workspaces.ps1";      Arguments = @() },
     [pscustomobject]@{ Name = "Developer tooling"; File = "70-developer-tools.ps1"; Arguments = @() },
+    [pscustomobject]@{ Name = "ChatGPT desktop"; File = "72-chatgpt.ps1"; Arguments = @() },
     [pscustomobject]@{ Name = "Verification";     File = "90-verify.ps1";          Arguments = $VerificationArguments }
 )
 

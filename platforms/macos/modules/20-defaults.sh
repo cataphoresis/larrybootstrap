@@ -184,7 +184,7 @@ else
     defaults write com.apple.dock autohide -bool true
     defaults write com.apple.dock autohide-delay -float 0
     defaults write com.apple.dock autohide-time-modifier -float 0.18
-    defaults write com.apple.dock tilesize -int 42
+    defaults write com.apple.dock tilesize -int 48
     defaults write com.apple.dock show-recents -bool false
     defaults write com.apple.dock launchanim -bool false
     defaults write com.apple.dock mineffect -string "scale"
@@ -200,8 +200,8 @@ verify_default \
     "Auto-hide delay" "0"
 
 verify_default \
-    com.apple.dock tilesize 42 \
-    "Dock size" "42"
+    com.apple.dock tilesize 48 \
+    "Dock size" "48"
 
 verify_default \
     com.apple.dock show-recents 0 \

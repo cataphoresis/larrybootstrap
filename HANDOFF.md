@@ -1,3 +1,35 @@
+# September 11 parity and Debian power update
+
+The approved Debian panel size is now 72 pixels with 60-pixel icons, applied
+live and encoded in both appearance and quick-launch setup. The earlier
+48/40 values and custom 1Password SVG had survived reboot; no icon repair was
+needed. User confirmed the larger size is better.
+
+Battery reports 37.71 Wh versus 42.35 Wh design (89.045%), 183 cycles. Previous
+boot log records lid closed at September 10 15:30 with no suspend entry. XFCE
+4.20 was using its implicit lock-only lid default and held the lid inhibitor.
+Explicit suspend-on-lid-close on AC/battery plus lock-screen is now applied,
+backed up, and included in core/full/desktop. An actual close/reopen test and
+longer sleep-discharge measurement remain pending. Deep sleep is selected;
+there is no swap and XFCE reports hibernate unavailable. Boot/resume settings
+were not changed.
+
+Tailscale installer/manifest coverage is added to all three platforms. Debian
+focused installation is `bash bootstrap.sh tailscale`, followed by separate
+`sudo tailscale up` sign-in. Debian installation and authentication were completed by the user and verified
+on September 11: Tailscale 1.102.4, tailscaled enabled/active, backend Running.
+See PLATFORM_PARITY.md for the full comparison and other parity corrections.
+All existing September 9 work is preserved; this work remains uncommitted.
+
+# September 9 desktop update
+
+Debian's existing 34/28-pixel panel/icon defaults were still active but too
+small. The new defaults are 48/40 pixels. The focused Linux script backed up
+and applied Firefox, VS Code, Terminal, Mousepad, Thunar, FileZilla, 1Password,
+Spotify, and Balatro in order. macOS keeps Finder first by user preference.
+Windows and macOS focused setup scripts are prepared but need native execution
+and validation; see the root README. Changes remain uncommitted for review.
+
 # LarryBootstrap Handoff
 
 Updated September 4, 2026 after completing the Rosebook triple-boot recovery
@@ -21,8 +53,8 @@ Read-only validation on `rosebook` (`macOS 12.6.7`, `x86_64`) found Visual
 Studio Code's `code` command, `openai.chatgpt`, Node `v22.22.3`, npm `12.0.2`,
 and Codex CLI `0.152.0`. Developer verification reported both OpenAI checks and
 both protected accessibility preferences as passing. Its overall result was
-still incomplete because Wireshark, Balena Etcher, and HandBrake were absent;
-Rust and Tauri remained optional warnings.
+still incomplete because Wireshark and Balena Etcher were absent;
+The optional developer-tool checks from that revision have since been retired.
 
 Shell syntax checks and `git diff --check` passed. ShellCheck was unavailable
 on `rosebook`. No complete developer-profile install or idempotency rerun has
@@ -125,12 +157,11 @@ Boot macOS through the verified rEFInd macOS entry, open an interactive
 Terminal, and pull `origin/main`. The next substantive work is:
 
 1. confirm the shared `LARRYSHARED` volume and repository are writable;
-2. install or reconcile Wireshark, Balena Etcher, and HandBrake for the
+2. install or reconcile Wireshark and Balena Etcher for the
    developer profile under the bottle-only Monterey policy;
 3. rerun the complete developer-profile bootstrap;
 4. rerun it a second time to verify idempotency; and
-5. review the final report, allowing only documented optional Rust/Tauri or
-   unavailable-compatible-bottle warnings.
+5. review the final report, allowing only documented unavailable-compatible-bottle warnings.
 
 Do not alter the GPT, recreate a hybrid MBR, remove `OSXRESERVED`, or change EFI
 loaders during the macOS bootstrap work. The three operating systems and their

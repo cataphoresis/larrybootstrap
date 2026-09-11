@@ -35,6 +35,15 @@ source "$MODULE_DIR/packages.sh"
 # shellcheck disable=SC1091
 source "$MODULE_DIR/apps.sh"
 # shellcheck disable=SC1091
+source "$MODULE_DIR/tailscale.sh"
+# shellcheck disable=SC1091
+source "$MODULE_DIR/workstation.sh"
+# shellcheck disable=SC1091
+source "$MODULE_DIR/sharing.sh"
+COMMON_DIR="$(cd "$PROJECT_DIR/../../common" && pwd)"
+# shellcheck disable=SC1091
+source "$COMMON_DIR/firefox-policy.sh"
+# shellcheck disable=SC1091
 source "$MODULE_DIR/ssh.sh"
 # shellcheck disable=SC1091
 source "$MODULE_DIR/storage.sh"
@@ -54,7 +63,15 @@ case "$MODE" in
         configure_debian_repositories
         apt_update_upgrade
         install_core_packages
+        install_tailscale
+        install_pia
+        install_chatgpt
+        install_precompiled_apfs_fuse
+        run_step "Configure mandatory Firefox extensions" apply_firefox_policy \
+            /etc/firefox/policies/policies.json "$COMMON_DIR/profiles/firefox.json"
+        configure_smb_shares
         configure_mac_keyboard_compatibility
+        configure_xfce_lid_suspend
         configure_ssh
         capture_audit
         ;;
@@ -70,12 +87,20 @@ case "$MODE" in
         configure_debian_repositories
         apt_update_upgrade
         install_core_packages
+        install_tailscale
+        install_pia
+        install_chatgpt
+        install_precompiled_apfs_fuse
+        run_step "Configure mandatory Firefox extensions" apply_firefox_policy \
+            /etc/firefox/policies/policies.json "$COMMON_DIR/profiles/firefox.json"
+        configure_smb_shares
         configure_package_defaults
         install_full_packages
         configure_mac_keyboard_compatibility
+        configure_xfce_lid_suspend
         configure_xfce_desktop
         configure_flatpak
-        install_heroic
+        install_moonlight
         install_vscode
         configure_vscode_codex
         install_codex_cli
@@ -103,11 +128,39 @@ case "$MODE" in
         acquire_sudo
         wait_for_package_manager || exit 1
         apt_repair
+        install_tailscale
+        install_pia
         install_apt_packages "Installing desktop launcher applications" filezilla
         configure_mac_keyboard_compatibility
+        configure_xfce_lid_suspend
         configure_xfce_quick_launchers
         configure_terminal_start_directory
         capture_audit
+        ;;
+
+    workstation)
+        require_debian
+        require_normal_user
+        acquire_sudo
+        wait_for_package_manager || exit 1
+        install_core_packages
+        install_pia
+        install_chatgpt
+        install_precompiled_apfs_fuse
+        install_rpi_imager
+        run_step "Configure mandatory Firefox extensions" apply_firefox_policy \
+            /etc/firefox/policies/policies.json "$COMMON_DIR/profiles/firefox.json"
+        configure_ssh
+        configure_smb_shares
+        capture_audit
+        ;;
+
+    tailscale)
+        require_debian
+        require_normal_user
+        acquire_sudo
+        wait_for_package_manager || exit 1
+        install_tailscale || exit 1
         ;;
 
     ssh)
@@ -124,6 +177,8 @@ case "$MODE" in
         echo "  $0 full"
         echo "  $0 desktop"
         echo "  $0 ssh"
+        echo "  $0 tailscale"
+        echo "  $0 workstation"
         echo "  $0 audit"
         exit 2
         ;;

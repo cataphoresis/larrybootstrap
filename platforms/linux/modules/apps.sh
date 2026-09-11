@@ -397,7 +397,7 @@ EOF
     xfconf-query -c xfce4-panel -p /panels/panel-2 -r -R 2>/dev/null || true
     xfconf-query -c xfce4-panel -p /panels -t int -s 1 -a
     xfconf_set xfce4-panel /panels/panel-1/position string "p=10;x=0;y=0"
-    xfconf_set xfce4-panel /panels/panel-1/size uint 34
+    xfconf_set xfce4-panel /panels/panel-1/size uint 72
     xfconf_set xfce4-panel /plugins/plugin-1 string whiskermenu
 
     xfce4-panel --restart
@@ -420,11 +420,14 @@ configure_xfce_quick_launchers() {
     xfconf_set xsettings /Xft/DPI int 144
 
     local panel_dir="$HOME/.config/xfce4/panel"
+    local icon_source
+    icon_source="$(cd "$(dirname "${BASH_SOURCE[0]}")/../assets" && pwd)/1password.svg"
     local balatro_desktop="$HOME/.local/share/applications/Balatro.desktop"
     local plugin_id
     local desktop_file
     local item
-    local -a plugin_ids=(101 102 103 104 105 106 107)
+    local -a plugin_ids=(101 102 103 104 105 106 107 108 109)
+    local -a active_ids=()
     local -a desktop_files=(
         /usr/share/applications/firefox-esr.desktop
         /usr/share/applications/code.desktop
@@ -432,6 +435,8 @@ configure_xfce_quick_launchers() {
         /usr/share/applications/org.xfce.mousepad.desktop
         /usr/share/applications/thunar.desktop
         /usr/share/applications/filezilla.desktop
+        /usr/share/applications/1password.desktop
+        /var/lib/flatpak/exports/share/applications/com.spotify.Client.desktop
         "$balatro_desktop"
     )
 
@@ -453,6 +458,9 @@ EOF
     for ((item = 0; item < ${#plugin_ids[@]}; item++)); do
         plugin_id="${plugin_ids[$item]}"
         desktop_file="${desktop_files[$item]}"
+        if [[ "$item" == 7 && ! -f "$desktop_file" ]]; then
+            desktop_file="$HOME/.local/share/flatpak/exports/share/applications/com.spotify.Client.desktop"
+        fi
 
         xfconf-query -c xfce4-panel -p "/plugins/plugin-$plugin_id" -r -R \
             2>/dev/null || true
@@ -463,8 +471,14 @@ EOF
             continue
         fi
 
+        active_ids+=(-t int -s "$plugin_id")
         mkdir -p "$panel_dir/launcher-$plugin_id"
         cp "$desktop_file" "$panel_dir/launcher-$plugin_id/$(basename "$desktop_file")"
+        if [[ "$plugin_id" == 107 ]]; then
+            install -m 0644 "$icon_source" "$panel_dir/launcher-$plugin_id/1password.svg"
+            sed -i "s|^Icon=.*|Icon=$panel_dir/launcher-$plugin_id/1password.svg|" \
+                "$panel_dir/launcher-$plugin_id/$(basename "$desktop_file")"
+        fi
         xfconf-query -c xfce4-panel -p "/plugins/plugin-$plugin_id" \
             -n -t string -s launcher
         xfconf-query -c xfce4-panel -p "/plugins/plugin-$plugin_id/items" \
@@ -475,18 +489,37 @@ EOF
     xfconf_set xfce4-panel /plugins/plugin-2 string tasklist
     xfconf_set xfce4-panel /plugins/plugin-3 string separator
     xfconf_set xfce4-panel /plugins/plugin-3/expand bool true
-    xfconf_set xfce4-panel /panels/panel-1/icon-size uint 28
+    xfconf_set xfce4-panel /panels/panel-1/size uint 72
+    xfconf_set xfce4-panel /panels/panel-1/icon-size uint 60
 
     xfconf-query -c xfce4-panel -p /panels/panel-1/plugin-ids \
         -t int -s 1 \
-        -t int -s 101 -t int -s 102 -t int -s 103 -t int -s 104 \
-        -t int -s 105 -t int -s 106 -t int -s 107 \
+        "${active_ids[@]}" \
         -t int -s 2 -t int -s 3 -t int -s 4 -t int -s 5 \
         -t int -s 6 -t int -s 7 -t int -s 8 -t int -s 9 \
         -t int -s 10
 
     xfce4-panel --restart
-    success "Added Firefox, VS Code, Terminal, Mousepad, Thunar, FileZilla, and Balatro launchers"
+    success "Added Firefox, VS Code, Terminal, Mousepad, Thunar, FileZilla, 1Password, Spotify, and Balatro launchers"
+}
+
+configure_xfce_lid_suspend() {
+    if ! is_macbook_xfce_profile || ! is_current_xfce_graphical_session; then
+        warning "Lid suspend settings require the MacBook XFCE session"
+        return
+    fi
+    local backup_dir
+    backup_dir="$HOME/.local/state/larrybootstrap/power-$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$backup_dir"
+    xfconf-query -c xfce4-power-manager -lv > "$backup_dir/live-settings.txt"
+    cp -p "$HOME/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-power-manager.xml" \
+        "$backup_dir/" 2>/dev/null || true
+    # XfpmLidTriggerAction: 1 = suspend. Keep XFCE as the sole lid handler.
+    xfconf_set xfce4-power-manager /xfce4-power-manager/logind-handle-lid-switch bool false
+    xfconf_set xfce4-power-manager /xfce4-power-manager/lid-action-on-ac uint 1
+    xfconf_set xfce4-power-manager /xfce4-power-manager/lid-action-on-battery uint 1
+    xfconf_set xfce4-power-manager /xfce4-power-manager/lock-screen-suspend-hibernate bool true
+    success "Lid close now locks and suspends on AC and battery"
 }
 
 configure_terminal_start_directory() {
@@ -627,18 +660,23 @@ configure_flatpak() {
     fi
 }
 
-install_heroic() {
-    section "Heroic Games Launcher"
-
-    if flatpak info com.heroicgameslauncher.hgl \
-        >/dev/null 2>&1; then
-        echo "Heroic is already installed."
-        return
+install_moonlight() {
+    section "Moonlight"
+    if ! command -v flatpak >/dev/null 2>&1; then
+        failure "Moonlight requires Flatpak"
+        return 1
     fi
-
-    run_step "Install Heroic from Flathub" \
-        flatpak install -y flathub com.heroicgameslauncher.hgl
+    if flatpak info com.moonlight_stream.Moonlight >/dev/null 2>&1; then
+        success "Moonlight is already installed"
+    elif flatpak install -y flathub com.moonlight_stream.Moonlight; then
+        success "Installed Moonlight"
+    else
+        failure "Could not install Moonlight"
+        return 1
+    fi
 }
+
+
 
 validate_deb_archive() {
     local file="$1"
@@ -858,6 +896,13 @@ show_application_status() {
         printf '  %-27s %-10s\n' "$app_version" "$app_source"
     }
 
+    if command -v tailscale >/dev/null 2>&1; then
+        version="$(tailscale version 2>/dev/null | head -n1)"
+        report_app_row "Tailscale" ok "${version:--}" "deb"
+    else
+        report_app_row "Tailscale" fail "-" "-"
+    fi
+
     if version="$(
         dpkg-query -W -f='${Version}' 1password 2>/dev/null
     )"; then
@@ -877,12 +922,7 @@ show_application_status() {
         report_app_row "Spotify" fail "-" "-"
     fi
 
-    if flatpak info com.heroicgameslauncher.hgl >/dev/null 2>&1; then
-        version="$(flatpak_app_version com.heroicgameslauncher.hgl)"
-        report_app_row "Heroic" ok "${version:--}" "flatpak"
-    else
-        report_app_row "Heroic" fail "-" "-"
-    fi
+
 
     if command -v code >/dev/null 2>&1; then
         version="$(code --version 2>/dev/null | head -n1)"
@@ -912,12 +952,11 @@ show_application_status() {
         report_app_row "Codex CLI" fail "-" "-"
     fi
 
-    if version="$(
-        dpkg-query -W -f='${Version}' rpi-imager 2>/dev/null
-    )"; then
-        report_app_row "Raspberry Pi Imager" ok "$version" "deb"
+    if command -v snap >/dev/null 2>&1 && snap list rpi-imager >/dev/null 2>&1; then
+        version="$(snap list rpi-imager | awk 'NR==2 {print $2}')"
+        report_app_row "Raspberry Pi Imager" ok "$version" "snap"
     else
-        report_app_row "Raspberry Pi Imager" fail "-" "-"
+        report_app_row "Raspberry Pi Imager" fail "-" "snap"
     fi
 
     if version="$(
@@ -930,103 +969,23 @@ show_application_status() {
 }
 
 install_rpi_imager() {
-    section "Raspberry Pi Imager"
-
-    if dpkg-query -W -f='${db:Status-Abbrev}' rpi-imager \
-        2>/dev/null | grep -q '^ii'; then
-        echo "Raspberry Pi Imager is already installed."
-        return
+    section "Raspberry Pi Imager (Snap)"
+    if ! command -v snap >/dev/null 2>&1; then
+        failure "Raspberry Pi Imager requires snapd from the core APT set"
+        return 1
     fi
-
-    mkdir -p "$DOWNLOAD_DIR"
-
-    local release_data
-    local asset_name
-    local release_url
-    local asset_size
-    local asset_digest
-    local destination
-
-    release_data="$(
-        curl --fail --silent --show-error \
-            https://api.github.com/repos/raspberrypi/rpi-imager/releases/latest
-    )" || {
-        failure "Could not retrieve Raspberry Pi Imager release metadata"
-        return
-    }
-
-    asset_name="$(
-        jq -r '
-            .assets[]
-            | select(.name | test("^rpi-imager_[0-9.]+_amd64\\.deb$"))
-            | .name
-        ' <<< "$release_data" |
-        head -n1
-    )"
-
-    release_url="$(
-        jq -r '
-            .assets[]
-            | select(.name | test("^rpi-imager_[0-9.]+_amd64\\.deb$"))
-            | .browser_download_url
-        ' <<< "$release_data" |
-        head -n1
-    )"
-
-    asset_size="$(
-        jq -r '
-            .assets[]
-            | select(.name | test("^rpi-imager_[0-9.]+_amd64\\.deb$"))
-            | .size
-        ' <<< "$release_data" |
-        head -n1
-    )"
-
-    asset_digest="$(
-        jq -r '
-            .assets[]
-            | select(.name | test("^rpi-imager_[0-9.]+_amd64\\.deb$"))
-            | .digest
-        ' <<< "$release_data" |
-        head -n1
-    )"
-
-    if [[ -z "$asset_name" || "$asset_name" == "null" ||
-          -z "$release_url" || "$release_url" == "null" ]]; then
-        warning "Could not determine the current Raspberry Pi Imager Debian package"
-        return
+    if ! sudo systemctl enable --now snapd.socket || ! sudo snap wait system seed.loaded; then
+        failure "Snap initialization failed"
+        return 1
     fi
-
-    destination="$DOWNLOAD_DIR/$asset_name"
-
-    if [[ -f "$destination" ]]; then
-        if validate_github_asset_cache \
-            "$destination" "$asset_size" "$asset_digest"; then
-            echo "Using cached Raspberry Pi Imager installer: $destination"
-        else
-            warning "Cached Raspberry Pi Imager installer failed validation; downloading a fresh copy"
-            rm -f "$destination"
-        fi
+    if snap list rpi-imager >/dev/null 2>&1; then
+        success "Raspberry Pi Imager Snap is already installed"
+    elif sudo snap install rpi-imager; then
+        success "Installed Raspberry Pi Imager from Snap"
+    else
+        failure "Could not install Raspberry Pi Imager Snap"
+        return 1
     fi
-
-    if [[ ! -f "$destination" ]]; then
-        if ! curl --fail --location --retry 3 \
-            "$release_url" \
-            --output "$destination"; then
-            failure "Could not download Raspberry Pi Imager"
-            return
-        fi
-    fi
-
-    if ! validate_github_asset_cache \
-        "$destination" "$asset_size" "$asset_digest"; then
-        failure "Downloaded Raspberry Pi Imager installer failed validation"
-        rm -f "$destination"
-        return
-    fi
-
-    run_step "Install Raspberry Pi Imager" \
-        sudo apt-get install -y "$destination"
 }
 
 install_balena_etcher() {

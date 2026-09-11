@@ -30,18 +30,14 @@ Homebrew manages:
 - Keka
 - Stats
 
-Amphetamine remains a manual/App Store item. FileZilla is handled by a separate
-Intel-compatibility module using a reviewed local archive. Existing Wireshark,
-Raspberry Pi Imager, Balena Etcher, Private Internet Access, HandBrake,
-MKVToolNix and MakeMKV installations are preserved and
-verified where the implementation defines a check; they are not all installed
-by the standard Homebrew profile.
+Amphetamine is a manual App Store download, with a clickable URL printed by
+the workstation stage. FileZilla uses its existing compatibility installer.
+CotEditor, Steam, Tailscale and GPT fdisk are also part of the native profiles.
 
 ## Command-line tools
 
 - git
 - ffmpeg
-- yt-dlp
 - wget
 - jq
 - gh
@@ -61,11 +57,12 @@ not reinstalled merely because an older run compiled them from source.
 
 ## Developer profile
 
-The developer profile extends standard with Python, CMake, pkg-config, Node,
-Wireshark, Balena Etcher, Private Internet Access, HandBrake, Raspberry Pi
-Imager, Rust, Tauri, the OpenAI VS Code extension, and Codex CLI. Node uses the
-compatibility-managed official Intel binary rather than Homebrew on this
-Monterey host. Codex is installed through npm after Node is available.
+The developer profile extends standard with Python, CMake, pkg-config,
+Wireshark, Balena Etcher, Private Internet Access and Raspberry Pi Imager.
+Non-minimal profiles install Codex CLI and the OpenAI VS Code extension.
+Node uses the compatibility-managed official Intel binary on Monterey.
+FFmpeg is included across profiles: reviewed Intel binaries on Intel and a
+Homebrew bottle on Apple Silicon.
 
 The two protected accessibility preferences are attempted normally. When
 Monterey blocks them, the defaults module continues and reports that Terminal
@@ -97,4 +94,31 @@ On `rosebook`, direct developer verification detects `openai.chatgpt`, Node
 `v22.22.3`, npm `12.0.2`, and Codex CLI `0.152.0`. The protected accessibility
 preferences are also readable and correct with Terminal Full Disk Access.
 Complete developer-profile reconciliation and idempotency checks remain
-pending because Wireshark, Balena Etcher, and HandBrake are not yet installed.
+pending; the current expanded workstation/network stages also need native validation.
+
+## Ordered bottom launchers
+
+See the [shared launcher standard](../../README.md#bottom-launcher-standard)
+for the focused setup command, prerequisites, backups, and platform behavior.
+
+## ChatGPT, browser policy, and network access
+
+On macOS 14+, the workstation stage installs the current official `chatgpt`
+cask (Intel and Apple Silicon). On macOS 13 and earlier it detects MacGPT or
+prints https://goodsnooze.gumroad.com/l/menugpt for manual download into
+Applications. Amphetamine prints https://apps.apple.com/us/app/amphetamine/
+plus the full App Store ID link. Neither download requires a bootstrap purchase.
+
+All five Firefox extensions come from `common/profiles/firefox.json` and use
+mandatory `force_installed` policy. Restart Firefox after the policy is applied.
+
+The network stage enables Remote Login and native SMB sharing: `OS` is
+read-only, `LarryShare` read/write, guest access off. It expects the shared disk
+at `/Volumes/LARRYSHARED`; set `LARRY_SHARE_PATH` for another mount path. Enable
+your account under File Sharing > Options and enter its password locally.
+Terminal may need Full Disk Access for Remote Login. Existing filesystem
+permissions remain effective; the bootstrap does not broaden them recursively.
+
+GPT fdisk (`gdisk`) is an open-source advanced GPT partition-table tool, not a
+GUI APFS filesystem resizer. The bootstrap only installs it and never modifies
+partition tables. See the root workstation update notes for tool limitations.

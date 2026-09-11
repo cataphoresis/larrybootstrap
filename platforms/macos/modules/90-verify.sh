@@ -121,9 +121,6 @@ command_version() {
             ffprobe -version 2>/dev/null |
                 awk 'NR == 1 {print $3; exit}'
             ;;
-        yt-dlp)
-            yt-dlp --version 2>/dev/null | head -n 1
-            ;;
         *)
             "$command_name" --version 2>/dev/null | head -n 1
             ;;
@@ -268,11 +265,13 @@ if [[ ! -f "$PROFILE_FILE" ]]; then
 else
     # shellcheck disable=SC1090
     source "$PROFILE_FILE"
+    normalize_native_profile
 fi
 
 formula_command() {
     case "$1" in
         python) printf 'python3\n' ;;
+        gptfdisk) printf 'gdisk\n' ;;
         *)      printf '%s\n' "$1" ;;
     esac
 }
@@ -303,13 +302,15 @@ cask_label() {
         wireshark-app)           printf 'Wireshark\n' ;;
         balenaetcher)            printf 'Balena Etcher\n' ;;
         private-internet-access) printf 'Private Internet Access\n' ;;
-        handbrake-app)           printf 'HandBrake\n' ;;
         *)                       printf '%s\n' "$1" ;;
     esac
 }
 
 cask_app_paths() {
     case "$1" in
+        tailscale-app) printf '%s\n' '/Applications/Tailscale.app' ;;
+        coteditor) printf '%s\n' '/Applications/CotEditor.app' ;;
+        steam) printf '%s\n' '/Applications/Steam.app' ;;
         firefox)
             printf '%s\n' "/Applications/Firefox.app"
             ;;
@@ -347,9 +348,6 @@ cask_app_paths() {
             ;;
         private-internet-access)
             printf '%s\n' "/Applications/Private Internet Access.app"
-            ;;
-        handbrake-app)
-            printf '%s\n' "/Applications/HandBrake.app"
             ;;
         *)
             return 1
@@ -456,7 +454,7 @@ if declare -p MANUAL_APPS >/dev/null 2>&1; then
     done
 fi
 
-if [[ "$PROFILE" == "developer" ]]; then
+if [[ "$PROFILE" != "minimal" ]]; then
     section "Developer Toolchain"
 
     if command -v code >/dev/null 2>&1; then
@@ -490,38 +488,45 @@ if [[ "$PROFILE" == "developer" ]]; then
             "Install with: npm install -g @openai/codex"
     fi
 
-    if command -v rustc >/dev/null 2>&1; then
-        pass "Rust" "$(rustc --version)"
-    else
-        warn \
-            "Rust" \
-            "not installed" \
-            "Install rustup if Rust/Tauri development is required."
-    fi
 
-    if command -v cargo >/dev/null 2>&1; then
-        pass "Cargo" "$(cargo --version)"
-    else
-        warn \
-            "Cargo" \
-            "not installed" \
-            "Install rustup if Rust/Tauri development is required."
-    fi
-
-    if command -v cargo-tauri >/dev/null 2>&1; then
-        pass \
-            "Tauri CLI" \
-            "$(cargo-tauri --version 2>/dev/null || echo installed)"
-    elif command -v cargo >/dev/null 2>&1 &&
-         cargo tauri --version >/dev/null 2>&1; then
-        pass "Tauri CLI" "$(cargo tauri --version)"
-    else
-        warn \
-            "Tauri CLI" \
-            "not installed" \
-            "Install the Tauri CLI if Tauri development is required."
-    fi
 fi
+
+section "Shared workstation policy"
+firefox_policy=/Applications/Firefox.app/Contents/Resources/distribution/policies.json
+firefox_intent="$ROOT_DIR/../../common/profiles/firefox.json"
+if jq -e --slurpfile intent "$firefox_intent" '
+    .policies.ExtensionSettings as $settings |
+    all($intent[0].extensions[];
+        $settings[.id].installation_mode == "force_installed" and
+        $settings[.id].install_url == .install_url)
+' "$firefox_policy" >/dev/null 2>&1; then
+    pass "Firefox extensions" "all five mandatory extensions configured"
+else
+    fail "Firefox extensions" "shared policy missing or incomplete" "Rerun 30-workstation.sh and restart Firefox."
+fi
+if (( $(sw_vers -productVersion | cut -d. -f1) >= 14 )); then
+    if [[ "$(defaults read /Applications/ChatGPT.app/Contents/Info CFBundleIdentifier 2>/dev/null || true)" == com.openai.codex ]]; then
+        pass "ChatGPT desktop" "current official desktop app installed"
+    else
+        fail "ChatGPT desktop" "not installed" "Rerun the workstation stage."
+    fi
+elif [[ -d /Applications/MacGPT.app ]]; then
+    pass "MacGPT" "installed"
+else
+    warn "MacGPT" "manual download pending" "https://goodsnooze.gumroad.com/l/menugpt"
+fi
+if /usr/sbin/systemsetup -getremotelogin 2>/dev/null | grep -q 'On'; then
+    pass "SSH Remote Login" "enabled"
+else
+    warn "SSH Remote Login" "not confirmed" "Check Sharing > Remote Login; systemsetup may require sudo/Full Disk Access."
+fi
+for share_record in LarryBootstrap-OS LarryBootstrap-LarryShare; do
+    if /usr/bin/dscl . -read "/SharePoints/$share_record" directory_path >/dev/null 2>&1; then
+        pass "$share_record" "share record exists"
+    else
+        fail "$share_record" "share missing" "Rerun the network-sharing stage."
+    fi
+done
 
 section "Profile-independent Applications"
 

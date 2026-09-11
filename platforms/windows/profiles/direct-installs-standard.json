@@ -10,10 +10,35 @@
         "*.dl.sourceforge.net"
       ],
       "publisherPattern": "FileZilla Project|Tim Kosse",
-      "silentArguments": ["/S"],
+      "silentArguments": [
+        "/S"
+      ],
       "detectionPaths": [
         "%ProgramFiles%\\FileZilla FTP Client\\filezilla.exe",
         "%ProgramFiles(x86)%\\FileZilla FTP Client\\filezilla.exe"
+      ]
+    },
+    {
+      "name": "balena Etcher",
+      "required": true,
+      "githubRepository": "balena-io/etcher",
+      "assetNamePattern": "^balenaEtcher-[0-9.]+\\.Setup\\.exe$",
+      "downloadUri": "https://github.com/balena-io/etcher/releases/latest",
+      "manualDownloadUri": "https://github.com/balena-io/etcher/releases",
+      "allowedDownloadHosts": [
+        "github.com",
+        "release-assets.githubusercontent.com",
+        "objects.githubusercontent.com"
+      ],
+      "publisherPattern": "balena|resin",
+      "silentArguments": [
+        "/S"
+      ],
+      "detectionPaths": [
+        "%LOCALAPPDATA%\\Programs\\balena-etcher\\balenaEtcher.exe",
+        "%LOCALAPPDATA%\\balena_etcher\\balenaEtcher.exe",
+        "%ProgramFiles%\\balenaEtcher\\balenaEtcher.exe",
+        "%ProgramFiles%\\balena-etcher\\balenaEtcher.exe"
       ]
     }
   ]

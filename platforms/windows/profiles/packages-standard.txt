@@ -15,3 +15,9 @@ AgileBits.1Password|1Password|true
 7zip.7zip|7-Zip|true
 Microsoft.PowerToys|PowerToys|false
 PrivateInternetAccess.PrivateInternetAccess|Private Internet Access|true
+Tailscale.Tailscale|Tailscale|true
+Valve.Steam|Steam|true
+Gyan.FFmpeg|FFmpeg|true
+Python.Python.3.13|Python 3|true
+Eassos.DiskGenius|DiskGenius (free edition)|true
+Paragon.APFS|Paragon APFS (trial; license required)|false

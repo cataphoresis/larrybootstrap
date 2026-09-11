@@ -114,6 +114,9 @@ first_formula_without_bottle() {
 
 cask_app_path() {
     case "$1" in
+        tailscale-app)            printf '/Applications/Tailscale.app\n' ;;
+        coteditor)                printf '/Applications/CotEditor.app\n' ;;
+        steam)                    printf '/Applications/Steam.app\n' ;;
         firefox)                  printf '/Applications/Firefox.app\n' ;;
         visual-studio-code)       printf '/Applications/Visual Studio Code.app\n' ;;
         rectangle)                printf '/Applications/Rectangle.app\n' ;;
@@ -126,7 +129,6 @@ cask_app_path() {
         wireshark-app)            printf '/Applications/Wireshark.app\n' ;;
         balenaetcher)             printf '/Applications/balenaEtcher.app\n' ;;
         private-internet-access)  printf '/Applications/Private Internet Access.app\n' ;;
-        handbrake-app)            printf '/Applications/HandBrake.app\n' ;;
         *)                        printf '\n' ;;
     esac
 }
@@ -191,6 +193,7 @@ report_status info "Prefix" "$(brew --prefix)"
 
 # shellcheck disable=SC1090
 source "$PROFILE_FILE"
+    normalize_native_profile
 
 section "Homebrew Maintenance"
 
@@ -343,9 +346,6 @@ if declare -p MANUAL_FORMULAE >/dev/null 2>&1; then
                             awk 'NR==1 {print $3; exit}'
                     )"
                     ;;
-                yt-dlp)
-                    version="$(yt-dlp --version 2>/dev/null || echo installed)"
-                    ;;
                 *)
                     version="$(
                         "$formula" --version 2>&1 |
@@ -369,6 +369,9 @@ if declare -p MANUAL_APPS >/dev/null 2>&1; then
 
     for app in "${MANUAL_APPS[@]}"; do
         report_status info "$app" "manual handling required"
+        if [[ "$app" == amphetamine ]]; then
+            printf '%s\n' 'https://apps.apple.com/us/app/amphetamine/'
+        fi
         manual_count=$((manual_count + 1))
         manual_pending_count=$((manual_pending_count + 1))
     done

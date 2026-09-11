@@ -24,7 +24,7 @@
     {
       "key": "editor.lightweight",
       "windows": "Notepad++.Notepad++",
-      "linux": "geany",
+      "linux": "mousepad",
       "macos": "coteditor"
     },
     {
@@ -54,8 +54,40 @@
     {
       "key": "remote.streaming",
       "windows": "MoonlightGameStreamingProject.Moonlight",
-      "linux": "moonlight",
+      "linux": "com.moonlight_stream.Moonlight",
       "macos": "moonlight"
+    },
+    {
+      "key": "network.mesh",
+      "windows": "Tailscale.Tailscale",
+      "linux": "tailscale",
+      "macos": "tailscale-app"
+    },
+    {
+      "key": "games.launcher",
+      "windows": "Valve.Steam",
+      "linux": "steam-installer",
+      "macos": "steam"
+    },
+    {
+      "key": "media.ffmpeg",
+      "windows": "Gyan.FFmpeg",
+      "linux": "ffmpeg",
+      "macos": "ffmpeg"
+    },
+    {
+      "key": "chat.desktop",
+      "windows": "9PLM9XGG6VKS",
+      "windowsSource": "msstore",
+      "linux": "chatgpt",
+      "macos": "chatgpt",
+      "macosMinimumMajor": 14,
+      "macosFallback": "MacGPT",
+      "macosFallbackUrl": "https://goodsnooze.gumroad.com/l/menugpt"
+    },
+    {
+      "key": "browser.extensions",
+      "manifest": "common/profiles/firefox.json"
     }
   ]
 }

@@ -60,8 +60,42 @@ capture_audit() {
     uname -a \
         > "$reports/kernel.txt"
 
+    {
+        for package in chatgpt snapd samba smbclient gvfs-backends; do
+            dpkg-query -W -f='${binary:Package} ${db:Status-Abbrev} ${Version}\n' "$package" || true
+        done
+        snap list rpi-imager || true
+        if [[ -x /opt/piavpn/bin/pia-client ]]; then echo "PIA: installed"; else echo "PIA: missing"; fi
+        command -v apfs-fuse || true
+        systemctl is-active smbd || true
+        testparm -s || true
+        printf '\nMandatory Firefox extension policy: '
+        jq -e --slurpfile intent "$COMMON_DIR/profiles/firefox.json" '
+            .policies.ExtensionSettings as $settings |
+            all($intent[0].extensions[];
+                $settings[.id].installation_mode == "force_installed" and
+                $settings[.id].install_url == .install_url)
+        ' /etc/firefox/policies/policies.json || true
+    } > "$reports/workstation.txt" 2>&1
+
     systemctl status ssh --no-pager \
         > "$reports/ssh-status.txt" 2>&1 || true
+
+    {
+        tailscale version || true
+        systemctl is-enabled tailscaled || true
+        systemctl is-active tailscaled || true
+        # Do not dump tailnet peers or account identities into general reports.
+        tailscale status --json 2>/dev/null | jq -r '.BackendState // "unknown"' || true
+    } > "$reports/tailscale.txt" 2>&1
+
+    {
+        upower -d || true
+        cat /sys/power/mem_sleep || true
+        cat /proc/swaps
+        xfconf-query -c xfce4-power-manager -lv || true
+        systemd-inhibit --list --no-pager || true
+    } > "$reports/power.txt" 2>&1
 
     flatpak list \
         > "$reports/flatpaks.txt" 2>&1 || true
@@ -210,7 +244,7 @@ capture_xfce_desktop_audit() {
             printf 'INFO: panel plugin order: '
             xfconf-query -c xfce4-panel \
                 -p /panels/panel-1/plugin-ids 2>&1 || true
-            for plugin_id in 101 102 103 104 105 106 107; do
+            for plugin_id in 101 102 103 104 105 106 107 108 109; do
                 printf 'INFO: quick-launch plugin %s: ' "$plugin_id"
                 xfconf-query -c xfce4-panel \
                     -p "/plugins/plugin-$plugin_id/items" 2>&1 || true
