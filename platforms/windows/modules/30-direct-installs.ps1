@@ -39,6 +39,14 @@ function Get-ExpandedDetectionPath {
 function Find-InstalledApplication {
     param([Parameter(Mandatory)][pscustomobject]$Package)
 
+    if ($Package.PSObject.Properties.Name -contains 'detectionRegistry') {
+        $Runtime = Get-ItemProperty -LiteralPath $Package.detectionRegistry -ErrorAction SilentlyContinue
+        if ($Runtime -and $Runtime.Installed -eq 1 -and $Runtime.Version -match '^v?14\.') {
+            return "$($Package.detectionRegistry) ($($Runtime.Version))"
+        }
+        return $null
+    }
+
     foreach ($Candidate in $Package.detectionPaths) {
         $Path = Get-ExpandedDetectionPath -Path ([string]$Candidate)
 
@@ -99,13 +107,24 @@ function Resolve-DirectDownloadUri {
 function Install-DirectPackage {
     param([Parameter(Mandatory)][pscustomobject]$Package)
 
-    $DownloadUri = Resolve-DirectDownloadUri -Package $Package
-
     $TemporaryPath = Join-Path ([IO.Path]::GetTempPath()) ("larry-bootstrap-{0}.exe" -f [guid]::NewGuid())
 
     try {
-        Write-InfoLine $Package.name "downloading from $($DownloadUri.DnsSafeHost)"
-        Invoke-WebRequest -Uri $DownloadUri -OutFile $TemporaryPath -UseBasicParsing
+        $script:ResolvedAssetDigest = $null
+        $LocalInstaller = $null
+        if ($Package.PSObject.Properties.Name -contains 'localInstallerPattern') {
+            $LocalInstaller = Get-ChildItem -LiteralPath (Join-Path $env:USERPROFILE 'Downloads') `
+                -Filter $Package.localInstallerPattern -File -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        }
+        if ($LocalInstaller) {
+            Write-InfoLine $Package.name "validating local installer $($LocalInstaller.Name)"
+            Copy-Item -LiteralPath $LocalInstaller.FullName -Destination $TemporaryPath
+        } else {
+            $DownloadUri = Resolve-DirectDownloadUri -Package $Package
+            Write-InfoLine $Package.name "downloading from $($DownloadUri.DnsSafeHost)"
+            Invoke-WebRequest -Uri $DownloadUri -OutFile $TemporaryPath -UseBasicParsing
+        }
 
         if ($script:ResolvedAssetDigest -match '^sha256:([0-9a-fA-F]{64})$') {
             if ((Get-FileHash -Algorithm SHA256 -LiteralPath $TemporaryPath).Hash -ne $Matches[1]) {
@@ -141,7 +160,11 @@ function Install-DirectPackage {
         Write-OK "$($Package.name) signature" $Signer
         Add-ReportLine ("[ OK ] {0,-28} signed by {1}" -f "$($Package.name) signature", $Signer)
 
-        $Process = Start-Process -FilePath $TemporaryPath -ArgumentList @($Package.silentArguments) -Wait -PassThru
+        $Process = Start-Process -FilePath $TemporaryPath -ArgumentList @($Package.silentArguments) -WindowStyle Hidden -PassThru
+        # Wait for the installer itself; Electron installers may launch the app,
+        # which must not keep the bootstrap waiting for its entire process tree.
+        if (-not $Process.WaitForExit(600000)) { throw 'Installer did not exit within ten minutes; inspect it before retrying' }
+        $Process.Refresh()
 
         if ($Process.ExitCode -notin @(0, 3010)) {
             throw "Installer exited with code $($Process.ExitCode)"

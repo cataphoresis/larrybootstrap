@@ -89,6 +89,14 @@ function Test-RegistryValue {
 function Find-DirectApplication {
     param([Parameter(Mandatory)][pscustomobject]$Package)
 
+    if ($Package.PSObject.Properties.Name -contains 'detectionRegistry') {
+        $Runtime = Get-ItemProperty -LiteralPath $Package.detectionRegistry -ErrorAction SilentlyContinue
+        if ($Runtime -and $Runtime.Installed -eq 1 -and $Runtime.Version -match '^v?14\.') {
+            return "$($Package.detectionRegistry) ($($Runtime.Version))"
+        }
+        return $null
+    }
+
     foreach ($Candidate in $Package.detectionPaths) {
         $Path = [Environment]::ExpandEnvironmentVariables([string]$Candidate)
 

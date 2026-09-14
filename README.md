@@ -225,20 +225,27 @@ Focused setup commands from the repository root:
   Dock preferences, orders the managed apps after Finder, retains other pins
   afterward, and sets a 48-pixel bottom Dock. CotEditor is the shared profile's
   macOS editor. Install Balatro through Steam first.
-- Windows: `./platforms/windows/quick-launch.ps1` from PowerShell prepares the
+- Windows: `./platforms/windows/quick-launch.ps1` from Administrator PowerShell
+  under the desktop user's account prepares the
   current user's ordered taskbar policy; `-WhatIf` previews without changes.
-  Applications and their Start menu shortcuts must already exist. Sign out and
+  Applications must already exist, with Start menu shortcuts or packaged Start
+  app registrations (including Store-installed 1Password). Larry PowerShell is
+  preferred for the terminal slot. Sign out and
   back in to apply. This replaces default pins using Microsoft's
   [taskbar layout policy](https://learn.microsoft.com/en-us/windows/configuration/taskbar/pinned-apps),
   which can reapply pins at sign-in and manages the Start layout policy too.
   Existing policy values and generated layouts are backed up under
   `%LOCALAPPDATA%\LarryBootstrap\Taskbar`. Windows settings now disable small
   taskbar icons. The script targets the Windows 10 workstation; policy support
-  and appearance must be validated natively.
+  and appearance must be validated natively. On September 14 the nine entries
+  and policy were applied and verified; visual review after sign-in is pending.
+  Large native buttons are enabled, but Windows does not expose independent
+  72-pixel taskbar and 60-pixel icon settings like XFCE.
 
 The macOS and Windows focused scripts are not automatically run by a full
 bootstrap. Run them once on their respective operating systems after installing
-all launcher applications. Native validation remains pending on both systems.
+all launcher applications. macOS native validation and Windows sign-in/visual
+validation remain pending.
 
 ## Cross-platform parity review
 

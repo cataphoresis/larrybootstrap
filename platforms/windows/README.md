@@ -161,6 +161,41 @@ without allowing repeated runs to consume space indefinitely.
 See the [shared launcher standard](../../README.md#bottom-launcher-standard)
 for the focused setup command, prerequisites, backups, and platform behavior.
 
+Run `./platforms/windows/quick-launch.ps1` from the repository root in an
+Administrator PowerShell under the desktop user's account. `-WhatIf` resolves
+all nine applications without writing settings. The script supports packaged
+Start apps such as 1Password and prefers Larry PowerShell for the terminal pin.
+The policy and ordered XML were verified natively on September 14; sign-out/in
+and visual confirmation remain pending. Large taskbar buttons are enabled.
+Windows display scaling controls their physical size; the Debian 72-pixel
+panel and 60-pixel icons are not independent native Windows taskbar settings.
+
+## September 14 Windows reconciliation
+
+Full apply now requests Administrator elevation before running its modules;
+dry-run and verification do not request elevation. The native full run passed
+54 checks with one known WSL `--mount` warning and zero failures. The initial
+unelevated run stopped at SMB creation, which the elevated rerun resolved.
+
+FileZilla is required. The September 3 SourceForge download returned HTML and
+was previously only an optional warning. If the automatic download is blocked,
+save the official `FileZilla_*_win64-setup.exe` in the user's Downloads folder
+and rerun. A local installer undergoes the same executable-header, valid
+Authenticode signature, and FileZilla publisher checks as a download. The
+installed FileZilla 3.71.1 and its shortcut now verify successfully.
+
+The required Visual C++ v14 x64 runtime uses
+`https://aka.ms/vs/17/release/vc_redist.x64.exe`, validates Microsoft's signature,
+and installs silently with `/install /quiet /norestart` when absent. The x64
+runtime registry entry is used for installation and verification detection.
+The underscore spelling `vc_redist_x64.exe` redirects to Bing and is not an
+installer URL. Existing runtime 14.51.36247 was retained on this workstation.
+
+Direct installers wait for the installer process itself, with a ten-minute
+timeout, so an application opened by an Electron installer does not block the
+bootstrap until that application closes. Fresh-install validation of this
+revised wait path remains pending; the installed-app rerun passed.
+
 ## Expanded workstation setup
 
 The standard manifest includes FFmpeg, Python 3.13, DiskGenius and optional

@@ -23,7 +23,7 @@ modules must be updated together until a shared reconciliation layer exists.
 | Codex VS Code extension | `openai.chatgpt` | `openai.chatgpt` | `openai.chatgpt` | Same expansion on macOS; CLI and extension are separate installs |
 | File browser | Explorer built in | Thunar explicitly in core | Finder built in | Finder remains first in Dock by user preference |
 | Terminal | PowerShell 7 prerequisite | XFCE Terminal explicitly in core | Terminal built in | Native equivalents |
-| FileZilla | Direct installer, optional | Full APT | Dedicated direct-install module | All three; Windows can skip an unavailable optional download |
+| FileZilla | Required direct installer; signed Downloads fallback | Full APT | Dedicated direct-install module | Windows 3.71.1 verified September 14; failed downloads no longer count as optional |
 | 1Password | WinGet | Vendor APT | Homebrew cask | All three |
 | Spotify | User-context WinGet | Flatpak | Homebrew cask | All three |
 | VLC | WinGet | Core APT | Homebrew cask | All three |
@@ -136,4 +136,8 @@ Debian desktop settings were checked live. Tailscale 1.102.4 was subsequently
 installed and authenticated by the user; verification found tailscaled enabled
 and active with backend state Running. Shell syntax/static checks and
 mocked Tailscale installer control-flow checks cover the changed Bash code.
-Windows/macOS native installation and launcher behavior remain unverified.
+Windows full reconciliation passed on September 14 with 54 passed checks,
+one known WSL warning and no failures. Ordered Windows policy and packaged
+1Password resolution are verified; sign-in/visual review remains pending.
+macOS native installation and launcher behavior remain unverified for these
+parity additions. See the Windows README and HANDOFF for the current details.

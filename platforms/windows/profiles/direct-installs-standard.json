@@ -2,7 +2,8 @@
   "packages": [
     {
       "name": "FileZilla",
-      "required": false,
+      "required": true,
+      "localInstallerPattern": "FileZilla_*_win64-setup.exe",
       "downloadUri": "https://sourceforge.net/projects/filezilla/files/latest/download",
       "manualDownloadUri": "https://filezilla-project.org/download.php?show_all=1",
       "allowedDownloadHosts": [
@@ -17,6 +18,16 @@
         "%ProgramFiles%\\FileZilla FTP Client\\filezilla.exe",
         "%ProgramFiles(x86)%\\FileZilla FTP Client\\filezilla.exe"
       ]
+    },
+    {
+      "name": "Visual C++ v14 Runtime (x64)",
+      "required": true,
+      "downloadUri": "https://aka.ms/vs/17/release/vc_redist.x64.exe",
+      "allowedDownloadHosts": ["aka.ms", "download.visualstudio.microsoft.com", "download.microsoft.com"],
+      "publisherPattern": "O=Microsoft Corporation(?:,|$)",
+      "silentArguments": ["/install", "/quiet", "/norestart"],
+      "detectionRegistry": "HKLM:\\SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\x64",
+      "detectionPaths": []
     },
     {
       "name": "balena Etcher",

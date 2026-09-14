@@ -6,7 +6,9 @@ param(
 
     [switch]$DryRun,
 
-    [switch]$Relaunched
+    [switch]$Relaunched,
+
+    [switch]$ElevationRelaunched
 )
 
 Set-StrictMode -Version Latest
@@ -218,6 +220,21 @@ function Install-WinGetRepairModule {
 
 Write-Host ""
 Write-StageZero "INFO" "checking bootstrap prerequisites"
+
+if (-not $DryRun -and -not $VerifyOnly -and -not (Test-IsAdministrator)) {
+    if ($ElevationRelaunched) { throw 'The full bootstrap requires Windows Administrator elevation.' }
+    $HostExecutable = (Get-Process -Id $PID).Path
+    $ElevationArguments = @(
+        '-NoLogo', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
+        ('"{0}"' -f $MyInvocation.MyCommand.Path), '-Profile', $Profile, '-ElevationRelaunched'
+    )
+    Write-StageZero 'INFO' 'requesting Administrator access for the full bootstrap'
+    $ElevatedProcess = Start-Process -FilePath $HostExecutable -ArgumentList $ElevationArguments `
+        -Verb RunAs -WindowStyle Hidden -PassThru
+    $null = $ElevatedProcess.Handle
+    $ElevatedProcess.WaitForExit()
+    exit $ElevatedProcess.ExitCode
+}
 
 $PwshPath = Get-PwshPath
 $PwshHealthy = $PwshPath -and (

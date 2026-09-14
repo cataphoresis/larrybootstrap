@@ -1,3 +1,63 @@
+# September 14 Windows reconciliation
+
+On ROSEBOOK-WINDOW (Windows 10 Pro 21H2, build 19044), the elevated full
+standard bootstrap passed 54 checks with one known `wsl --mount` warning and
+zero failures. Report: `platforms/windows/reports/verify-2026-09-14_12-53-23.txt`.
+Git preflight confirmed clean `main` equal to fetched `origin/main` at
+`b8b9bc8` before these edits. Session changes are not yet committed or pushed.
+
+- The first run installed FFmpeg, Python, DiskGenius, optional Paragon APFS,
+  and Etcher, then stopped at SMB with access denied. Stage 0 now requests
+  Windows Administrator elevation before full apply; the elevated rerun passed.
+- FileZilla 3.71.1 is installed and verified. The old SourceForge endpoint
+  returned HTML on September 3 and FileZilla was incorrectly allowed to pass
+  as optional. It is now required, with a signed local Downloads installer
+  fallback when the remote download is blocked.
+- Visual C++ v14 x64 is required, using the verified Microsoft redirect
+  `https://aka.ms/vs/17/release/vc_redist.x64.exe`. The supplied underscore
+  spelling led to Bing. Existing x64 runtime 14.51.36247 is detected and kept.
+- Direct-installer waiting now tracks the installer rather than all child
+  processes; Etcher had opened its app and held up the original run. Fresh
+  installation of the revised wait path remains untested; installed-app rerun
+  and existing Etcher resolver regression checks passed.
+- Firefox's five mandatory extension policies, current ChatGPT desktop, and
+  authenticated OS/LarryShare SMB shares all passed verification.
+- The ordered taskbar policy is applied and its XML/registry checked: Firefox,
+  VS Code, Larry PowerShell, Notepad++, Explorer, FileZilla, 1Password, Spotify,
+  Balatro. 1Password is already installed/running as a packaged app; the script
+  now resolves its AppUserModelID instead of requiring a nonexistent .lnk.
+
+Pending: sign out/in and visually validate icon order. Large native taskbar
+buttons are enabled, but exact Debian 72/60 sizing is not yet achieved. The
+user's preference for whole-display scaling versus a separate dock is pending;
+display scaling was not changed. PowerToys workspace captures and a separate
+clean-machine/full-VM provisioning test remain outstanding.
+
+Read-only taskbar measurement found 2304-pixel width, 60-pixel height and
+144 DPI (150% scale) after enabling large buttons. This is still smaller than
+the requested Debian panel. No separate dock was installed.
+
+The elevated health audit completed with four warning categories and no
+collection errors (`audit-2026-09-14_13-01-19.txt`). Follow-up priorities:
+
+1. Investigate earlier DNS Client 1023 policy-table errors and VBoxNetLwf 12
+   errors if networking symptoms recur. Effective NRPT rules were readable
+   afterward; Tailscale and the VirtualBox filter service were running.
+2. Review boot-time ACPI timeout, processor firmware throttling, WudfRd and
+   duplicate disk-identifier events without altering the triple-boot disks.
+3. Fix AppX inventory collection under PowerShell 7 by using native Windows
+   PowerShell, as the launcher now does for Get-StartApps. The warning does
+   not mean installed Store apps are missing.
+4. Improve audit classification: E: and G: are removable slots with no medium
+   (null capacity), not full disks. Stopped updater services need trigger/task
+   context before being called failures. Steam is running despite an earlier
+   service-start timeout. C: had about 25 GB free during the audit.
+
+Direct share-ACL inspection confirmed only the current account: OS Read and
+LarryShare Change. Runtime detection regression cases and existing Etcher
+resolver/redirect rejection checks passed, as did PowerShell parsing and
+`git diff --check`.
+
 # September 11 parity and Debian power update
 
 ## September 11 bootstrap parity follow-up
