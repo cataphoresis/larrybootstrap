@@ -37,3 +37,30 @@ install_tailscale() {
     echo "For first-time sign-in, run: sudo tailscale up"
     echo "Existing Tailscale account, routing, DNS, and SSH settings are retained."
 }
+
+configure_tailscale_systray() {
+    section "Tailscale system tray"
+    local autostart_dir="$HOME/.config/autostart"
+    local desktop_file="$autostart_dir/tailscale-systray.desktop"
+
+    mkdir -p "$autostart_dir" || return 1
+    cat >"$desktop_file" <<'EOF'
+[Desktop Entry]
+Type=Application
+Name=Tailscale
+Comment=Manage Tailscale from the system tray
+Exec=/usr/bin/tailscale systray
+Terminal=false
+OnlyShowIn=XFCE;
+X-GNOME-Autostart-enabled=true
+EOF
+    chmod 0644 "$desktop_file"
+    success "Tailscale system-tray autostart configured"
+
+    if [[ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]] && command -v tailscale >/dev/null 2>&1 &&
+       ! pgrep -u "$(id -u)" -f '[/]tailscale systray' >/dev/null 2>&1; then
+        nohup tailscale systray >/tmp/tailscale-systray.log 2>&1 &
+        disown || true
+        success "Tailscale system-tray app started for the current session"
+    fi
+}

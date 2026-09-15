@@ -132,6 +132,12 @@ repository and enable `tailscaled`. Run only this step with
 `bash ../../bootstrap.sh tailscale` from this folder, or
 `bash bootstrap.sh tailscale` from the repository root. Run in an interactive
 terminal for sudo. First-time account sign-in is separate: `sudo tailscale up`.
+The Debian package includes the XFCE tray client but does not create a per-user
+autostart entry. The bootstrap now writes
+`~/.config/autostart/tailscale-systray.desktop` and starts the tray client in an
+active graphical session. If the tray is missing before rerunning the bootstrap,
+start it once with `tailscale systray`; it will then launch automatically at
+future XFCE logins.
 The installer does not change existing tailnet routing, DNS, or SSH options.
 
 MacBook XFCE core/full/desktop modes explicitly set lid-close to suspend on AC

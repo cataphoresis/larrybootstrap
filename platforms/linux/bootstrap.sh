@@ -64,6 +64,7 @@ case "$MODE" in
         apt_update_upgrade
         install_core_packages
         install_tailscale
+        configure_tailscale_systray
         install_pia
         install_chatgpt
         install_precompiled_apfs_fuse
@@ -88,6 +89,7 @@ case "$MODE" in
         apt_update_upgrade
         install_core_packages
         install_tailscale
+        configure_tailscale_systray
         install_pia
         install_chatgpt
         install_precompiled_apfs_fuse
@@ -129,6 +131,7 @@ case "$MODE" in
         wait_for_package_manager || exit 1
         apt_repair
         install_tailscale
+        configure_tailscale_systray
         install_pia
         install_apt_packages "Installing desktop launcher applications" filezilla
         configure_mac_keyboard_compatibility
@@ -161,6 +164,7 @@ case "$MODE" in
         acquire_sudo
         wait_for_package_manager || exit 1
         install_tailscale || exit 1
+        configure_tailscale_systray
         ;;
 
     ssh)
